@@ -1,0 +1,37 @@
+# Supabase Configuration for EduConnect
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://localhost:3000"]
+jwt_expiry = 3600
+enable_signup = true
+
+[edge_functions]
+enabled = true
+port = 54324
+
+# Note: The actual edge function is located at:
+# supabase/functions/server/
+# 
+# It is accessed via the endpoint: /make-server-05c2b65f/
+# 
+# If deploying manually, use:
+# supabase functions deploy make-server-05c2b65f --project-ref YOUR_PROJECT_ID
