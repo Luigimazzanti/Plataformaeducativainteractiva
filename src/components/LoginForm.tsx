@@ -145,12 +145,9 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
       <div className="w-full max-w-md">
         <Card className="shadow-xl">
         <CardHeader className="text-center">
-          <div className="flex justify-between items-start mb-4 gap-2">
-            <div className="flex-1" />
-            <div className="bg-gradient-to-r from-primary to-secondary p-3 sm:p-4 rounded-full">
-              <GraduationCap className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
-            </div>
-            <div className="flex-1 flex justify-end">
+          <div className="relative mb-4">
+            {/* Language Switcher - Positioned absolutely to not affect logo */}
+            <div className="absolute top-0 right-0">
               <Select value={language} onValueChange={(v) => setLanguage(v as Language)}>
                 <SelectTrigger className="w-[120px] sm:w-[140px] h-9">
                   <SelectValue>
@@ -171,6 +168,12 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            {/* Logo - Centered and stable */}
+            <div className="flex justify-center">
+              <div className="bg-gradient-to-r from-primary to-secondary p-3 sm:p-4 rounded-full">
+                <GraduationCap className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
+              </div>
             </div>
           </div>
           <CardTitle className="text-2xl sm:text-3xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
@@ -281,26 +284,26 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                     <button
                       type="button"
                       onClick={() => setSignupRole('student')}
-                      className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
+                      className={`p-3 sm:p-4 rounded-lg border-2 transition-all flex flex-col items-center justify-center ${
                         signupRole === 'student'
                           ? 'border-secondary bg-cyan-50 dark:bg-cyan-950'
                           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                       }`}
                     >
-                      <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-1 sm:mb-2 text-secondary" />
-                      <span className="text-xs sm:text-sm">{t('student')}</span>
+                      <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 mb-1 sm:mb-2 text-secondary flex-shrink-0" />
+                      <span className="text-xs sm:text-sm text-center">{t('student')}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setSignupRole('teacher')}
-                      className={`p-3 sm:p-4 rounded-lg border-2 transition-all ${
+                      className={`p-3 sm:p-4 rounded-lg border-2 transition-all flex flex-col items-center justify-center ${
                         signupRole === 'teacher'
                           ? 'border-primary bg-lime-50 dark:bg-lime-950'
                           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                       }`}
                     >
-                      <GraduationCap className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-1 sm:mb-2 text-primary" />
-                      <span className="text-xs sm:text-sm">{t('teacher')}</span>
+                      <GraduationCap className="w-6 h-6 sm:w-8 sm:h-8 mb-1 sm:mb-2 text-primary flex-shrink-0" />
+                      <span className="text-xs sm:text-sm text-center">{t('teacher')}</span>
                     </button>
                   </div>
                 </div>

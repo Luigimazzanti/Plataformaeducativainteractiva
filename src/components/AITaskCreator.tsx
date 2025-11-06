@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -7,9 +7,12 @@ import { Textarea } from './ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Upload, FileText, Image as ImageIcon, Video, Sparkles, Loader2, FileUp, Edit2, Check, Info } from 'lucide-react';
+import { Upload, FileText, Image as ImageIcon, Video, Sparkles, Loader2, FileUp, Edit2, Check, Info, WifiOff, Wifi } from 'lucide-react';
+import { Alert, AlertDescription } from './ui/alert';
 import { useLanguage } from '../utils/LanguageContext';
 import { apiClient } from '../utils/api';
+import { isDemoMode } from '../utils/demo-mode';
+import { projectId } from '../utils/supabase/info';
 
 interface AITaskCreatorProps {
   open: boolean;
@@ -48,6 +51,44 @@ export function AITaskCreator({ open, onOpenChange, onTaskCreated }: AITaskCreat
   const [generatedTask, setGeneratedTask] = useState<GeneratedTask | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [step, setStep] = useState<'upload' | 'preview' | 'edit'>('upload');
+  const [serverAvailable, setServerAvailable] = useState<boolean | null>(null);
+  const [checkingServer, setCheckingServer] = useState(false);
+
+  // Check server availability when dialog opens
+  useEffect(() => {
+    if (open) {
+      checkServerHealth();
+    }
+  }, [open]);
+
+  const checkServerHealth = async () => {
+    setCheckingServer(true);
+    try {
+      console.log('[AITaskCreator] Verificando disponibilidad del servidor...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-05c2b65f/health`,
+        { method: 'GET', signal: controller.signal }
+      );
+      
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        console.log('[AITaskCreator] ✅ Servidor disponible - IA activa');
+        setServerAvailable(true);
+      } else {
+        console.log('[AITaskCreator] ⚠️ Servidor respondió con error');
+        setServerAvailable(false);
+      }
+    } catch (error: any) {
+      console.log('[AITaskCreator] ⚠️ Servidor no disponible:', error.message);
+      setServerAvailable(false);
+    } finally {
+      setCheckingServer(false);
+    }
+  };
 
   const handleReset = () => {
     setContentType('text');
@@ -119,9 +160,24 @@ export function AITaskCreator({ open, onOpenChange, onTaskCreated }: AITaskCreat
       setGeneratedTask(result.task);
       setStep('preview');
     } catch (error: any) {
-      console.error('Error generating task with AI:', error);
+      console.error('[AITaskCreator] Error al generar tarea con IA:', error);
       const errorMessage = error.message || 'Error desconocido';
-      alert(`${t('aiError')}: ${errorMessage}\n\nPor favor verifica:\n- Tu conexión a internet\n- Que el servidor esté funcionando\n- Que la API de OpenAI esté configurada`);
+      
+      // Provide more specific error messages
+      let userMessage = `Error al generar la tarea: ${errorMessage}`;
+      
+      if (errorMessage.includes('demo')) {
+        userMessage = 'La generación con IA no está disponible en modo demo.\n\nAsegúrate de que:\n- El servidor Edge Function esté desplegado\n- La variable OPENAI_API_KEY esté configurada en Supabase\n- Recarga la página para verificar el estado del servidor';
+        setServerAvailable(false);
+      } else if (errorMessage.includes('OpenAI')) {
+        userMessage = `Error de la API de OpenAI:\n${errorMessage}\n\nVerifica que:\n- Tu API key de OpenAI esté configurada correctamente\n- Tengas créditos disponibles en tu cuenta de OpenAI\n- La API key tenga los permisos necesarios`;
+      } else if (errorMessage.includes('401')) {
+        userMessage = 'Error de autenticación con OpenAI.\n\nVerifica que tu API key esté configurada correctamente en los secretos de Supabase.';
+      } else if (errorMessage.includes('429')) {
+        userMessage = 'Límite de tasa excedido.\n\nHas alcanzado el límite de solicitudes de OpenAI. Espera un momento e intenta de nuevo.';
+      }
+      
+      alert(userMessage);
     } finally {
       setIsGenerating(false);
     }
@@ -167,6 +223,46 @@ export function AITaskCreator({ open, onOpenChange, onTaskCreated }: AITaskCreat
 
   const renderUploadStep = () => (
     <div className="space-y-6">
+      {/* Server Status Alert */}
+      {checkingServer ? (
+        <Alert className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <AlertDescription>
+            Verificando conexión con el servidor...
+          </AlertDescription>
+        </Alert>
+      ) : serverAvailable === true ? (
+        <Alert className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900">
+          <Wifi className="h-4 w-4 text-green-600 dark:text-green-400" />
+          <AlertDescription className="text-green-800 dark:text-green-200">
+            <strong>Servidor conectado</strong> - La generación con IA está disponible
+          </AlertDescription>
+        </Alert>
+      ) : serverAvailable === false ? (
+        <Alert className="bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900">
+          <WifiOff className="h-4 w-4 text-red-600 dark:text-red-400" />
+          <AlertDescription className="text-red-800 dark:text-red-200">
+            <strong>La generación con IA no está disponible</strong>
+            <p className="text-sm mt-1">
+              El servidor no está disponible o no respondió a tiempo. Verifica:
+            </p>
+            <ul className="text-sm mt-2 ml-4 list-disc space-y-1">
+              <li>Tu conexión a internet</li>
+              <li>Que el Edge Function esté desplegado en Supabase</li>
+              <li>Que OPENAI_API_KEY esté configurada</li>
+            </ul>
+            <Button 
+              variant="link" 
+              size="sm" 
+              onClick={checkServerHealth}
+              className="mt-2 h-auto p-0 text-red-600 dark:text-red-400"
+            >
+              Reintentar verificación
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       {/* Spanish Level and Difficulty Settings */}
       <Card className="bg-gradient-to-r from-lime-50 to-blue-50 dark:from-lime-950/20 dark:to-blue-950/20 border-lime-200 dark:border-lime-900">
         <CardHeader className="pb-3">
@@ -335,11 +431,24 @@ export function AITaskCreator({ open, onOpenChange, onTaskCreated }: AITaskCreat
         <Button variant="outline" onClick={handleClose}>
           {t('cancel')}
         </Button>
-        <Button onClick={handleGenerateTask} disabled={isGenerating}>
+        <Button 
+          onClick={handleGenerateTask} 
+          disabled={isGenerating || serverAvailable === false || checkingServer}
+        >
           {isGenerating ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               {t('aiGenerating')}
+            </>
+          ) : checkingServer ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Verificando...
+            </>
+          ) : serverAvailable === false ? (
+            <>
+              <WifiOff className="w-4 h-4 mr-2" />
+              Servidor No Disponible
             </>
           ) : (
             <>

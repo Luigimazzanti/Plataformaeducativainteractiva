@@ -1,15 +1,18 @@
-import { useState, useEffect } from 'react';
-import { createClient } from './utils/supabase/client';
-import { apiClient } from './utils/api';
-import { LoginForm } from './components/LoginForm';
-import { TeacherDashboard } from './components/TeacherDashboard';
-import { StudentDashboard } from './components/StudentDashboard';
-import { AdminDashboard } from './components/AdminDashboard';
-import { ThemeProvider } from './utils/ThemeContext';
-import { LanguageProvider, useLanguage } from './utils/LanguageContext';
-import { Toaster } from './components/ui/sonner';
-import { enableDemoMode, isDemoMode } from './utils/demo-mode';
-import { projectId } from './utils/supabase/info';
+import { useState, useEffect } from "react";
+import { createClient } from "./utils/supabase/client";
+import { apiClient } from "./utils/api";
+import { LoginForm } from "./components/LoginForm";
+import { TeacherDashboard } from "./components/TeacherDashboard";
+import { StudentDashboard } from "./components/StudentDashboard";
+import { AdminDashboard } from "./components/AdminDashboard";
+import { ThemeProvider } from "./utils/ThemeContext";
+import {
+  LanguageProvider,
+  useLanguage,
+} from "./utils/LanguageContext";
+import { Toaster } from "./components/ui/sonner";
+import { enableDemoMode, isDemoMode } from "./utils/demo-mode";
+import { projectId } from "./utils/supabase/info";
 
 function LoadingScreen() {
   const { t } = useLanguage();
@@ -17,7 +20,7 @@ function LoadingScreen() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gradient-from via-gradient-via to-gradient-to">
       <div className="text-center">
         <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-        <p className="text-muted-foreground">{t('loading')}</p>
+        <p className="text-muted-foreground">{t("loading")}</p>
       </div>
     </div>
   );
@@ -35,26 +38,40 @@ export default function App() {
 
   const checkServerAvailability = async () => {
     try {
-      console.log('[EduConnect] Verificando disponibilidad del servidor...');
+      console.log(
+        "[EduConnect] Verificando disponibilidad del servidor...",
+      );
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // Increased to 5 seconds
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        5000,
+      ); // Increased to 5 seconds
 
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-05c2b65f/health`,
-        { method: 'GET', signal: controller.signal }
+        { method: "GET", signal: controller.signal },
       );
-      
+
       clearTimeout(timeoutId);
 
       if (response.ok) {
-        console.log('[EduConnect] ✅ Servidor disponible - Todas las funciones activas');
+        console.log(
+          "[EduConnect] ✅ Servidor disponible - Todas las funciones activas",
+        );
       } else {
-        console.log('[EduConnect] ⚠️ Servidor respondió con error, activando modo demo');
+        console.log(
+          "[EduConnect] ⚠️ Servidor respondió con error, activando modo demo",
+        );
         enableDemoMode();
       }
     } catch (error: any) {
-      console.log('[EduConnect] ⚠️ Servidor no disponible:', error.message);
-      console.log('[EduConnect] Activando modo demo (sin IA ni subida de archivos)');
+      console.log(
+        "[EduConnect] ⚠️ Servidor no disponible:",
+        error.message,
+      );
+      console.log(
+        "[EduConnect] Activando modo demo (sin IA ni subida de archivos)",
+      );
       enableDemoMode();
     } finally {
       setServerChecked(true);
@@ -71,28 +88,33 @@ export default function App() {
       }
 
       const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (session?.access_token) {
         apiClient.setToken(session.access_token);
         try {
-          const { user: userData } = await apiClient.getCurrentUser();
-          
+          const { user: userData } =
+            await apiClient.getCurrentUser();
+
           // Load avatar from localStorage if available
-          const savedAvatar = localStorage.getItem(`user_avatar_${userData.id}`);
+          const savedAvatar = localStorage.getItem(
+            `user_avatar_${userData.id}`,
+          );
           if (savedAvatar) {
             userData.avatar = savedAvatar;
           }
-          
+
           setUser(userData);
         } catch (error: any) {
           // If getCurrentUser fails, clear the session
-          console.error('Error loading user:', error);
+          console.error("Error loading user:", error);
           await supabase.auth.signOut();
         }
       }
     } catch (error) {
-      console.error('Error checking session:', error);
+      console.error("Error checking session:", error);
     } finally {
       setIsLoading(false);
     }
@@ -100,7 +122,9 @@ export default function App() {
 
   const handleLoginSuccess = (userData: any) => {
     // Load avatar from localStorage if available
-    const savedAvatar = localStorage.getItem(`user_avatar_${userData.id}`);
+    const savedAvatar = localStorage.getItem(
+      `user_avatar_${userData.id}`,
+    );
     if (savedAvatar) {
       userData.avatar = savedAvatar;
     }
@@ -110,7 +134,7 @@ export default function App() {
   const handleUpdateProfile = (updates: any) => {
     setUser((prevUser: any) => ({
       ...prevUser,
-      ...updates
+      ...updates,
     }));
   };
 
@@ -136,16 +160,30 @@ export default function App() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        {!user ? (
-          <LoginForm onLoginSuccess={handleLoginSuccess} />
-        ) : user.role === 'admin' ? (
-          <AdminDashboard user={user} onLogout={handleLogout} onUpdateProfile={handleUpdateProfile} />
-        ) : user.role === 'teacher' ? (
-          <TeacherDashboard user={user} onLogout={handleLogout} onUpdateProfile={handleUpdateProfile} />
-        ) : (
-          <StudentDashboard user={user} onLogout={handleLogout} onUpdateProfile={handleUpdateProfile} />
-        )}
-        <Toaster />
+        <div className="overflow-x-hidden w-full min-h-screen">
+          {!user ? (
+            <LoginForm onLoginSuccess={handleLoginSuccess} />
+          ) : user.role === "admin" ? (
+            <AdminDashboard
+              user={user}
+              onLogout={handleLogout}
+              onUpdateProfile={handleUpdateProfile}
+            />
+          ) : user.role === "teacher" ? (
+            <TeacherDashboard
+              user={user}
+              onLogout={handleLogout}
+              onUpdateProfile={handleUpdateProfile}
+            />
+          ) : (
+            <StudentDashboard
+              user={user}
+              onLogout={handleLogout}
+              onUpdateProfile={handleUpdateProfile}
+            />
+          )}
+          <Toaster />
+        </div>
       </LanguageProvider>
     </ThemeProvider>
   );

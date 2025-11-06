@@ -150,38 +150,43 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-x-hidden">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-r from-primary to-secondary p-2 rounded-lg">
-                <Shield className="w-6 h-6 text-white" />
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+              <div className="bg-gradient-to-r from-primary to-secondary p-2 rounded-lg flex-shrink-0">
+                <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div>
-                <h1 className="text-xl">EduConnect Admin</h1>
-                <p className="text-sm text-muted-foreground">{user.name}</p>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-base sm:text-xl truncate">EduConnect Admin</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">{user.name}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={toggleTheme}
+                className="h-8 w-8 sm:h-10 sm:w-10"
               >
-                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                {theme === 'dark' ? <Sun className="w-4 h-4 sm:w-5 sm:h-5" /> : <Moon className="w-4 h-4 sm:w-5 sm:h-5" />}
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowSettingsPanel(true)}
+                className="h-8 w-8 sm:h-10 sm:w-10"
               >
-                <Globe className="w-5 h-5" />
+                <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
               </Button>
-              <Button variant="outline" onClick={onLogout}>
+              <Button variant="outline" onClick={onLogout} className="hidden sm:flex">
                 <LogOut className="w-4 h-4 mr-2" />
                 {t('logout')}
+              </Button>
+              <Button variant="outline" size="icon" onClick={onLogout} className="sm:hidden h-8 w-8">
+                <LogOut className="w-4 h-4" />
               </Button>
             </div>
           </div>
@@ -189,7 +194,7 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
           <Card>
@@ -248,16 +253,16 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
         )}
 
         {/* Users Management Tabs */}
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle className="text-lg sm:text-xl truncate">{t('userManagement') || 'User Management'}</CardTitle>
             <CardDescription className="text-sm">
               {t('manageUsersDescription') || 'View, manage, and moderate all users in the system'}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0 sm:p-6">
             <Tabs defaultValue="all" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-3 mx-4 sm:mx-0 mt-4 sm:mt-0">
                 <TabsTrigger value="all" className="text-xs sm:text-sm">
                   <span className="hidden sm:inline">{t('allUsers') || 'All Users'}</span>
                   <span className="sm:hidden">{t('all') || 'All'}</span>
@@ -268,71 +273,80 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
                   <span className="sm:hidden">{t('prof') || 'Prof'}</span>
                   <span className="ml-1">({teachers.length})</span>
                 </TabsTrigger>
-                <TabsTrigger value="students">{t('students') || 'Students'} ({students.length})</TabsTrigger>
+                <TabsTrigger value="students" className="text-xs sm:text-sm">
+                  <span className="hidden sm:inline">{t('students') || 'Students'}</span>
+                  <span className="sm:hidden">{t('stud') || 'Stud'}</span>
+                  <span className="ml-1">({students.length})</span>
+                </TabsTrigger>
               </TabsList>
 
               {/* All Users Tab */}
-              <TabsContent value="all" className="space-y-4">
+              <TabsContent value="all" className="space-y-3 sm:space-y-4 px-4 sm:px-0 mt-4">
                 {users.map(u => (
-                  <Card key={u.id}>
-                    <CardContent className="flex items-center justify-between p-4">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-12 w-12">
-                          <AvatarFallback className={u.role === 'teacher' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}>
-                            {getInitials(u.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p>{u.name}</p>
-                            <Badge variant={u.role === 'teacher' ? 'default' : 'secondary'}>
-                              {u.role}
-                            </Badge>
-                            {u.blocked && (
-                              <Badge variant="destructive">
-                                <Lock className="w-3 h-3 mr-1" />
-                                {t('blocked') || 'Blocked'}
+                  <Card key={u.id} className="overflow-hidden">
+                    <CardContent className="p-3 sm:p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                          <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
+                            <AvatarFallback className={u.role === 'teacher' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}>
+                              {getInitials(u.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                              <p className="truncate max-w-[150px] sm:max-w-none">{u.name}</p>
+                              <Badge variant={u.role === 'teacher' ? 'default' : 'secondary'} className="text-[10px] sm:text-xs">
+                                {u.role}
                               </Badge>
-                            )}
+                              {u.blocked && (
+                                <Badge variant="destructive" className="text-[10px] sm:text-xs">
+                                  <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
+                                  {t('blocked') || 'Blocked'}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs sm:text-sm text-muted-foreground truncate">{u.email}</p>
                           </div>
-                          <p className="text-sm text-muted-foreground">{u.email}</p>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {u.role === 'student' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openAssignDialog(u)}
-                          >
-                            <UserPlus className="w-4 h-4 mr-2" />
-                            {t('assignTeacher') || 'Assign Teacher'}
-                          </Button>
-                        )}
-                        <Button
-                          variant={u.blocked ? "outline" : "destructive"}
-                          size="sm"
-                          onClick={() => handleBlockUser(u.id, u.name, u.blocked || false)}
-                        >
-                          {u.blocked ? (
-                            <>
-                              <Unlock className="w-4 h-4 mr-2" />
-                              {t('unblock') || 'Unblock'}
-                            </>
-                          ) : (
-                            <>
-                              <Lock className="w-4 h-4 mr-2" />
-                              {t('block') || 'Block'}
-                            </>
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap flex-shrink-0">
+                          {u.role === 'student' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openAssignDialog(u)}
+                              className="text-xs h-8 px-2 sm:px-3"
+                            >
+                              <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                              <span className="hidden sm:inline">{t('assignTeacher') || 'Assign'}</span>
+                            </Button>
                           )}
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDeleteUser(u.id, u.name)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                          <Button
+                            variant={u.blocked ? "outline" : "destructive"}
+                            size="sm"
+                            onClick={() => handleBlockUser(u.id, u.name, u.blocked || false)}
+                            className="text-xs h-8 px-2 sm:px-3"
+                          >
+                            {u.blocked ? (
+                              <>
+                                <Unlock className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                                <span className="hidden sm:inline">{t('unblock') || 'Unblock'}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Lock className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                                <span className="hidden sm:inline">{t('block') || 'Block'}</span>
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteUser(u.id, u.name)}
+                            className="h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2"
+                          >
+                            <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -345,54 +359,58 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
               </TabsContent>
 
               {/* Teachers Tab */}
-              <TabsContent value="teachers" className="space-y-4">
+              <TabsContent value="teachers" className="space-y-3 sm:space-y-4 px-4 sm:px-0 mt-4">
                 {teachers.map(u => (
-                  <Card key={u.id}>
-                    <CardContent className="flex items-center justify-between p-4">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-12 w-12">
-                          <AvatarFallback className="bg-blue-100 text-blue-700">
-                            {getInitials(u.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p>{u.name}</p>
-                            {u.blocked && (
-                              <Badge variant="destructive">
-                                <Lock className="w-3 h-3 mr-1" />
-                                {t('blocked') || 'Blocked'}
-                              </Badge>
-                            )}
+                  <Card key={u.id} className="overflow-hidden">
+                    <CardContent className="p-3 sm:p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                          <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
+                            <AvatarFallback className="bg-blue-100 text-blue-700">
+                              {getInitials(u.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                              <p className="truncate max-w-[150px] sm:max-w-none">{u.name}</p>
+                              {u.blocked && (
+                                <Badge variant="destructive" className="text-[10px] sm:text-xs">
+                                  <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
+                                  {t('blocked') || 'Blocked'}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs sm:text-sm text-muted-foreground truncate">{u.email}</p>
                           </div>
-                          <p className="text-sm text-muted-foreground">{u.email}</p>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant={u.blocked ? "outline" : "destructive"}
-                          size="sm"
-                          onClick={() => handleBlockUser(u.id, u.name, u.blocked || false)}
-                        >
-                          {u.blocked ? (
-                            <>
-                              <Unlock className="w-4 h-4 mr-2" />
-                              {t('unblock') || 'Unblock'}
-                            </>
-                          ) : (
-                            <>
-                              <Lock className="w-4 h-4 mr-2" />
-                              {t('block') || 'Block'}
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDeleteUser(u.id, u.name)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                          <Button
+                            variant={u.blocked ? "outline" : "destructive"}
+                            size="sm"
+                            onClick={() => handleBlockUser(u.id, u.name, u.blocked || false)}
+                            className="text-xs h-8 px-2 sm:px-3"
+                          >
+                            {u.blocked ? (
+                              <>
+                                <Unlock className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                                <span className="hidden sm:inline">{t('unblock') || 'Unblock'}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Lock className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                                <span className="hidden sm:inline">{t('block') || 'Block'}</span>
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteUser(u.id, u.name)}
+                            className="h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2"
+                          >
+                            <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -405,62 +423,67 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
               </TabsContent>
 
               {/* Students Tab */}
-              <TabsContent value="students" className="space-y-4">
+              <TabsContent value="students" className="space-y-3 sm:space-y-4 px-4 sm:px-0 mt-4">
                 {students.map(u => (
-                  <Card key={u.id}>
-                    <CardContent className="flex items-center justify-between p-4">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-12 w-12">
-                          <AvatarFallback className="bg-green-100 text-green-700">
-                            {getInitials(u.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p>{u.name}</p>
-                            {u.blocked && (
-                              <Badge variant="destructive">
-                                <Lock className="w-3 h-3 mr-1" />
-                                {t('blocked') || 'Blocked'}
-                              </Badge>
-                            )}
+                  <Card key={u.id} className="overflow-hidden">
+                    <CardContent className="p-3 sm:p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                          <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
+                            <AvatarFallback className="bg-green-100 text-green-700">
+                              {getInitials(u.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
+                              <p className="truncate max-w-[150px] sm:max-w-none">{u.name}</p>
+                              {u.blocked && (
+                                <Badge variant="destructive" className="text-[10px] sm:text-xs">
+                                  <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
+                                  {t('blocked') || 'Blocked'}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs sm:text-sm text-muted-foreground truncate">{u.email}</p>
                           </div>
-                          <p className="text-sm text-muted-foreground">{u.email}</p>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openAssignDialog(u)}
-                        >
-                          <UserPlus className="w-4 h-4 mr-2" />
-                          {t('assignTeacher') || 'Assign Teacher'}
-                        </Button>
-                        <Button
-                          variant={u.blocked ? "outline" : "destructive"}
-                          size="sm"
-                          onClick={() => handleBlockUser(u.id, u.name, u.blocked || false)}
-                        >
-                          {u.blocked ? (
-                            <>
-                              <Unlock className="w-4 h-4 mr-2" />
-                              {t('unblock') || 'Unblock'}
-                            </>
-                          ) : (
-                            <>
-                              <Lock className="w-4 h-4 mr-2" />
-                              {t('block') || 'Block'}
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDeleteUser(u.id, u.name)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap flex-shrink-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openAssignDialog(u)}
+                            className="text-xs h-8 px-2 sm:px-3"
+                          >
+                            <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                            <span className="hidden sm:inline">{t('assignTeacher') || 'Assign'}</span>
+                          </Button>
+                          <Button
+                            variant={u.blocked ? "outline" : "destructive"}
+                            size="sm"
+                            onClick={() => handleBlockUser(u.id, u.name, u.blocked || false)}
+                            className="text-xs h-8 px-2 sm:px-3"
+                          >
+                            {u.blocked ? (
+                              <>
+                                <Unlock className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                                <span className="hidden sm:inline">{t('unblock') || 'Unblock'}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Lock className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                                <span className="hidden sm:inline">{t('block') || 'Block'}</span>
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteUser(u.id, u.name)}
+                            className="h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2"
+                          >
+                            <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
