@@ -2,18 +2,18 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '../utils/api';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Alert, AlertDescription } from './ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
-import { Shield, Users, LogOut, Trash2, UserPlus, UserMinus, Lock, Unlock, Moon, Sun, Globe, AlertCircle } from 'lucide-react';
+import { Shield, Users, LogOut, Trash2, UserPlus, UserMinus, Lock, Unlock, Moon, Sun, Globe, AlertCircle, GraduationCap, User } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { useLanguage } from '../utils/LanguageContext';
 import { useTheme } from '../utils/ThemeContext';
 import { SettingsPanel } from './SettingsPanel';
+import { NavigationDropdown } from './NavigationDropdown';
 
 interface AdminDashboardProps {
   user: any;
@@ -40,6 +40,7 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
   const [selectedTeacher, setSelectedTeacher] = useState<string>('');
   const [selectedStudent, setSelectedStudent] = useState<User | null>(null);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
   const { t, currentLanguage, changeLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
 
@@ -246,7 +247,7 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
                 {t('serverDeploymentIssue') || 'El servidor Edge Function no está desplegado (Error 403). Por favor, revisa el archivo ERROR_403_QUICK_FIX.md para solucionar este problema de infraestructura.'}
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
-                💡 {t('codeCorrectNote') || 'Nota: El código está correcto. Solo necesitas configurar Supabase correctamente.'}
+                ��� {t('codeCorrectNote') || 'Nota: El código está correcto. Solo necesitas configurar Supabase correctamente.'}
               </p>
             </AlertDescription>
           </Alert>
@@ -260,28 +261,36 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
               {t('manageUsersDescription') || 'View, manage, and moderate all users in the system'}
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-0 sm:p-6">
-            <Tabs defaultValue="all" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mx-4 sm:mx-0 mt-4 sm:mt-0">
-                <TabsTrigger value="all" className="text-xs sm:text-sm">
-                  <span className="hidden sm:inline">{t('allUsers') || 'All Users'}</span>
-                  <span className="sm:hidden">{t('all') || 'All'}</span>
-                  <span className="ml-1">({users.length})</span>
-                </TabsTrigger>
-                <TabsTrigger value="teachers" className="text-xs sm:text-sm">
-                  <span className="hidden sm:inline">{t('teachers') || 'Teachers'}</span>
-                  <span className="sm:hidden">{t('prof') || 'Prof'}</span>
-                  <span className="ml-1">({teachers.length})</span>
-                </TabsTrigger>
-                <TabsTrigger value="students" className="text-xs sm:text-sm">
-                  <span className="hidden sm:inline">{t('students') || 'Students'}</span>
-                  <span className="sm:hidden">{t('stud') || 'Stud'}</span>
-                  <span className="ml-1">({students.length})</span>
-                </TabsTrigger>
-              </TabsList>
+          <CardContent className="p-4 sm:p-6">
+            <div className="w-full space-y-4">
+              <NavigationDropdown
+                items={[
+                  { 
+                    value: 'all', 
+                    label: `${t('allUsers') || 'All Users'} (${users.length})`, 
+                    icon: Users, 
+                    mobileLabel: `Todos (${users.length})` 
+                  },
+                  { 
+                    value: 'teachers', 
+                    label: `${t('teachers') || 'Teachers'} (${teachers.length})`, 
+                    icon: GraduationCap, 
+                    mobileLabel: `Profesores (${teachers.length})` 
+                  },
+                  { 
+                    value: 'students', 
+                    label: `${t('students') || 'Students'} (${students.length})`, 
+                    icon: User, 
+                    mobileLabel: `Estudiantes (${students.length})` 
+                  },
+                ]}
+                activeValue={activeTab}
+                onValueChange={setActiveTab}
+              />
 
               {/* All Users Tab */}
-              <TabsContent value="all" className="space-y-3 sm:space-y-4 px-4 sm:px-0 mt-4">
+              {activeTab === 'all' && (
+                <div className="space-y-3 sm:space-y-4">
                 {users.map(u => (
                   <Card key={u.id} className="overflow-hidden">
                     <CardContent className="p-3 sm:p-4">
@@ -356,10 +365,12 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
                     {t('noUsers') || 'No users found'}
                   </div>
                 )}
-              </TabsContent>
+                </div>
+              )}
 
               {/* Teachers Tab */}
-              <TabsContent value="teachers" className="space-y-3 sm:space-y-4 px-4 sm:px-0 mt-4">
+              {activeTab === 'teachers' && (
+                <div className="space-y-3 sm:space-y-4">
                 {teachers.map(u => (
                   <Card key={u.id} className="overflow-hidden">
                     <CardContent className="p-3 sm:p-4">
@@ -420,10 +431,12 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
                     {t('noTeachers') || 'No teachers found'}
                   </div>
                 )}
-              </TabsContent>
+                </div>
+              )}
 
               {/* Students Tab */}
-              <TabsContent value="students" className="space-y-3 sm:space-y-4 px-4 sm:px-0 mt-4">
+              {activeTab === 'students' && (
+                <div className="space-y-3 sm:space-y-4">
                 {students.map(u => (
                   <Card key={u.id} className="overflow-hidden">
                     <CardContent className="p-3 sm:p-4">
@@ -493,8 +506,9 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
                     {t('noStudents') || 'No students found'}
                   </div>
                 )}
-              </TabsContent>
-            </Tabs>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </main>

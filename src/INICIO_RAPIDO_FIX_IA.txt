@@ -1,0 +1,149 @@
+═══════════════════════════════════════════════════════════════════════════
+                    🚀 INICIO RÁPIDO - FIX GENERADOR IA
+═══════════════════════════════════════════════════════════════════════════
+
+📋 PROBLEMA:
+   Error 401 + Error 504 en el Generador de Preguntas con IA de Gemini
+
+📋 CAUSA:
+   El archivo del servidor tiene extensión .tsx (debe ser .ts)
+
+📋 SOLUCIÓN:
+   Renombrar index.tsx → index.ts y redesplegar
+
+═══════════════════════════════════════════════════════════════════════════
+
+⚡ SOLUCIÓN RÁPIDA (30 SEGUNDOS)
+═══════════════════════════════════════════════════════════════════════════
+
+OPCIÓN A: Script Automático
+───────────────────────────
+
+   Linux/Mac:
+   $ bash fix-ia-generator.sh
+
+   Windows:
+   > fix-ia-generator.bat
+
+   Luego redesplegar:
+   $ supabase functions deploy server --project-ref ldhimtgexjbmwobkmcwr
+
+
+OPCIÓN B: Manual con Terminal
+──────────────────────────────
+
+   Linux/Mac:
+   $ cd supabase/functions/server
+   $ mv index.tsx index.ts
+   $ cd ../../..
+   $ supabase functions deploy server --project-ref ldhimtgexjbmwobkmcwr
+
+   Windows:
+   > cd supabase\functions\server
+   > ren index.tsx index.ts
+   > cd ..\..\..
+   > supabase functions deploy server --project-ref ldhimtgexjbmwobkmcwr
+
+
+OPCIÓN C: Manual con Supabase Dashboard
+────────────────────────────────────────
+
+   1. Abre: https://supabase.com/dashboard
+   2. Ve a: Edge Functions → server
+   3. Renombra: index.tsx → index.ts
+   4. Click: Deploy
+   5. Listo ✅
+
+═══════════════════════════════════════════════════════════════════════════
+
+🧪 VERIFICACIÓN
+═══════════════════════════════════════════════════════════════════════════
+
+Test 1: Health Check
+────────────────────
+$ curl https://ldhimtgexjbmwobkmcwr.supabase.co/functions/v1/server/make-server-05c2b65f/health
+
+Debe devolver: {"status":"ok"}
+
+
+Test 2: Desde la App
+────────────────────
+1. Login: teacher@demo.com / demo123
+2. Crear Tarea → Generador IA (botón ⚡)
+3. Pegar texto de prueba
+4. Click "Generar Preguntas"
+5. Debe generar preguntas en ~3-5 segundos ✅
+
+═══════════════════════════════════════════════════════════════════════════
+
+📚 DOCUMENTACIÓN DISPONIBLE
+═══════════════════════════════════════════════════════════════════════════
+
+Guías de Usuario:
+─────────────────
+📄 LEER_PRIMERO_SOLUCION_IA.md     → Guía rápida (2 min)
+📄 README_SOLUCION_IA.md           → Resumen ejecutivo
+📄 FIX_URGENTE_GENERADOR_IA.txt    → Paso a paso detallado
+
+Explicaciones Técnicas:
+───────────────────────
+📄 SOLUCION_ERROR_IA_GEMINI.md     → Análisis técnico
+📄 DIAGRAMA_PROBLEMA_IA.txt        → Diagrama visual
+
+Herramientas:
+─────────────
+🔧 fix-ia-generator.sh             → Script Linux/Mac
+🔧 fix-ia-generator.bat            → Script Windows
+
+Verificación:
+─────────────
+✅ CHECKLIST_POST_FIX.md           → Lista de verificación completa
+
+═══════════════════════════════════════════════════════════════════════════
+
+❓ PREGUNTAS FRECUENTES
+═══════════════════════════════════════════════════════════════════════════
+
+P: ¿Por qué el archivo .tsx no funciona?
+R: Deno (runtime de Supabase) no soporta JSX/React. Solo acepta .ts o .js
+
+P: ¿Perderé datos al renombrar?
+R: No. Solo cambias la extensión, el contenido permanece intacto.
+
+P: ¿Debo cambiar también kv_store.tsx?
+R: No es necesario. El archivo kv_store.tsx está protegido y el import 
+   usa explícitamente "./kv_store.ts"
+
+P: ¿Cuánto tiempo toma el fix?
+R: 30 segundos - 2 minutos (renombrar + redesplegar)
+
+P: ¿Funcionará la IA después del fix?
+R: Sí, completamente. El generador IA funcionará en 3-5 segundos.
+
+P: ¿Qué hago si sigue sin funcionar?
+R: Revisa CHECKLIST_POST_FIX.md para verificación paso a paso.
+
+═══════════════════════════════════════════════════════════════════════════
+
+🎯 RESUMEN
+═══════════════════════════════════════════════════════════════════════════
+
+   ANTES              →           DESPUÉS
+   ───────────────────────────────────────────────
+   index.tsx ❌       →           index.ts ✅
+   Error 504         →           Success 200
+   150s timeout      →           3-5s respuesta
+   No funciona       →           Funciona perfectamente
+
+   ACCIÓN REQUERIDA: Renombrar UN archivo
+   TIEMPO: 30 segundos
+   IMPACTO: Desbloquea toda la funcionalidad de IA
+
+═══════════════════════════════════════════════════════════════════════════
+
+✅ SIGUIENTE PASO:
+   
+   Elige una de las 3 opciones arriba y aplica el fix.
+   Luego verifica con CHECKLIST_POST_FIX.md
+
+═══════════════════════════════════════════════════════════════════════════

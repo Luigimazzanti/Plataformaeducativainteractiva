@@ -255,7 +255,7 @@ export class DemoModeAPI {
 
   // Auth
   async login(email: string, password: string): Promise<{ user: User; token: string }> {
-    await this.delay(300);
+    await this.delay(50); // Reduced for faster login
     
     // Check demo credentials
     const demoCredentials: Record<string, string> = {
@@ -277,7 +277,7 @@ export class DemoModeAPI {
   }
 
   async signup(data: { email: string; password: string; name: string; role: 'teacher' | 'student' }): Promise<{ user: User }> {
-    await this.delay(500);
+    await this.delay(100); // Reduced for faster signup
 
     if (storage.getUserByEmail(data.email)) {
       throw new Error('El email ya está registrado');
@@ -297,7 +297,7 @@ export class DemoModeAPI {
   }
 
   async getCurrentUser(): Promise<{ user: User }> {
-    await this.delay(100);
+    await this.delay(30); // Reduced for faster response
     const user = storage.getUser(this.getCurrentUserId());
     if (!user) throw new Error('Usuario no encontrado');
     return { user };
@@ -305,12 +305,12 @@ export class DemoModeAPI {
 
   // Users
   async getAllUsers(): Promise<{ users: User[] }> {
-    await this.delay(200);
+    await this.delay(50); // Reduced for faster response
     return { users: storage.getUsers() };
   }
 
   async updateUserProfile(updates: Partial<User>): Promise<{ user: User }> {
-    await this.delay(200);
+    await this.delay(50); // Reduced for faster response
     const userId = this.getCurrentUserId();
     storage.updateUser(userId, updates);
     const user = storage.getUser(userId);
@@ -319,17 +319,17 @@ export class DemoModeAPI {
   }
 
   async deleteUser(userId: string): Promise<void> {
-    await this.delay(300);
+    await this.delay(50); // Reduced for faster response
     storage.deleteUser(userId);
   }
 
   async blockUser(userId: string, blocked: boolean): Promise<void> {
-    await this.delay(200);
+    await this.delay(50); // Reduced for faster response
     storage.updateUser(userId, { blocked });
   }
 
   async assignTeacherToStudent(teacherId: string, studentId: string): Promise<void> {
-    await this.delay(200);
+    await this.delay(50); // Reduced for faster response
     const student = storage.getUser(studentId);
     if (student && student.role === 'student') {
       const teacherIds = student.teacherIds || [];
@@ -341,7 +341,7 @@ export class DemoModeAPI {
   }
 
   async unassignTeacherFromStudent(teacherId: string, studentId: string): Promise<void> {
-    await this.delay(200);
+    await this.delay(30); // Reduced for faster response
     const student = storage.getUser(studentId);
     if (student && student.role === 'student') {
       const teacherIds = (student.teacherIds || []).filter(id => id !== teacherId);
@@ -351,13 +351,13 @@ export class DemoModeAPI {
 
   // Students
   async getStudents(): Promise<{ students: User[] }> {
-    await this.delay(200);
+    await this.delay(30); // Reduced for faster response
     const users = storage.getUsers().filter(u => u.role === 'student');
     return { students: users };
   }
 
   async getMyStudents(): Promise<{ students: User[] }> {
-    await this.delay(200);
+    await this.delay(30); // Reduced for faster response
     const teacherId = this.getCurrentUserId();
     const students = storage.getUsers().filter(u => 
       u.role === 'student' && u.teacherIds?.includes(teacherId)
@@ -367,7 +367,7 @@ export class DemoModeAPI {
 
   // Assignments
   async createAssignment(data: any): Promise<{ assignment: Assignment }> {
-    await this.delay(300);
+    await this.delay(100); // Reduced for faster response
     const assignment: Assignment = {
       id: `demo-assignment-${Date.now()}`,
       ...data,
@@ -380,7 +380,7 @@ export class DemoModeAPI {
   }
 
   async getAssignments(): Promise<{ assignments: Assignment[] }> {
-    await this.delay(200);
+    await this.delay(30); // Reduced for faster response
     const userId = this.getCurrentUserId();
     const user = storage.getUser(userId);
     
@@ -396,14 +396,14 @@ export class DemoModeAPI {
   }
 
   async getAssignment(id: string): Promise<{ assignment: Assignment }> {
-    await this.delay(100);
+    await this.delay(20); // Reduced for faster response
     const assignment = storage.getAssignment(id);
     if (!assignment) throw new Error('Tarea no encontrada');
     return { assignment };
   }
 
   async updateAssignment(id: string, data: any): Promise<{ assignment: Assignment }> {
-    await this.delay(200);
+    await this.delay(50); // Reduced for faster response
     storage.updateAssignment(id, data);
     const assignment = storage.getAssignment(id);
     if (!assignment) throw new Error('Tarea no encontrada');
@@ -411,12 +411,12 @@ export class DemoModeAPI {
   }
 
   async deleteAssignment(id: string): Promise<void> {
-    await this.delay(200);
+    await this.delay(50); // Reduced for faster response
     storage.deleteAssignment(id);
   }
 
   async assignTask(assignmentId: string, studentIds: string[]): Promise<void> {
-    await this.delay(200);
+    await this.delay(50); // Reduced for faster response
     const assignment = storage.getAssignment(assignmentId);
     if (assignment) {
       const currentStudents = assignment.assignedStudents || [];
@@ -426,7 +426,7 @@ export class DemoModeAPI {
   }
 
   async getAssignedStudents(assignmentId: string): Promise<{ students: User[] }> {
-    await this.delay(100);
+    await this.delay(20); // Reduced for faster response
     const assignment = storage.getAssignment(assignmentId);
     if (!assignment) return { students: [] };
     
@@ -438,7 +438,7 @@ export class DemoModeAPI {
 
   // Submissions
   async submitAssignment(data: any): Promise<{ submission: Submission }> {
-    await this.delay(300);
+    await this.delay(100); // Reduced for faster response
     const submission: Submission = {
       id: `demo-submission-${Date.now()}`,
       ...data,
@@ -450,7 +450,7 @@ export class DemoModeAPI {
   }
 
   async getAssignmentSubmissions(assignmentId: string): Promise<{ submissions: any[] }> {
-    await this.delay(200);
+    await this.delay(30); // Reduced for faster response
     const submissions = storage.getSubmissions().filter(s => s.assignmentId === assignmentId);
     
     // Enrich with student data
@@ -467,7 +467,7 @@ export class DemoModeAPI {
   }
 
   async getMySubmissions(): Promise<{ submissions: any[] }> {
-    await this.delay(200);
+    await this.delay(30); // Reduced for faster response
     const studentId = this.getCurrentUserId();
     const submissions = storage.getSubmissions().filter(s => s.studentId === studentId);
     
@@ -484,13 +484,13 @@ export class DemoModeAPI {
   }
 
   async gradeSubmission(submissionId: string, data: { grade: number; feedback: string }): Promise<void> {
-    await this.delay(200);
+    await this.delay(50); // Reduced for faster response
     storage.updateSubmission(submissionId, data);
   }
 
   // Notes/Materials
   async createNote(data: any): Promise<{ note: Note }> {
-    await this.delay(300);
+    await this.delay(100); // Reduced for faster response
     const note: Note = {
       id: `demo-note-${Date.now()}`,
       ...data,
@@ -505,7 +505,7 @@ export class DemoModeAPI {
   }
 
   async getNotes(): Promise<{ notes: Note[] }> {
-    await this.delay(200);
+    await this.delay(30); // Reduced for faster response
     const userId = this.getCurrentUserId();
     const user = storage.getUser(userId);
     
@@ -521,12 +521,12 @@ export class DemoModeAPI {
   }
 
   async deleteNote(id: string): Promise<void> {
-    await this.delay(200);
+    await this.delay(50); // Reduced for faster response
     storage.deleteNote(id);
   }
 
   async assignNote(noteId: string, studentIds: string[]): Promise<void> {
-    await this.delay(200);
+    await this.delay(50); // Reduced for faster response
     const note = storage.getNote(noteId);
     if (note) {
       const currentStudents = note.assignedStudents || [];
@@ -536,7 +536,7 @@ export class DemoModeAPI {
   }
 
   async getAssignedStudentsForNote(noteId: string): Promise<{ students: User[] }> {
-    await this.delay(100);
+    await this.delay(20); // Reduced for faster response
     const note = storage.getNote(noteId);
     if (!note) return { students: [] };
     
@@ -547,7 +547,7 @@ export class DemoModeAPI {
   }
 
   async markNoteAsRead(noteId: string): Promise<void> {
-    await this.delay(100);
+    await this.delay(20); // Reduced for faster response
     const userId = this.getCurrentUserId();
     const note = storage.getNote(noteId);
     if (note) {
@@ -560,7 +560,7 @@ export class DemoModeAPI {
   }
 
   async markNoteAsOpened(noteId: string): Promise<void> {
-    await this.delay(100);
+    await this.delay(20); // Reduced for faster response
     const userId = this.getCurrentUserId();
     const note = storage.getNote(noteId);
     if (note) {
@@ -574,7 +574,7 @@ export class DemoModeAPI {
 
   // File upload (mock)
   async uploadFile(file: File): Promise<{ url: string }> {
-    await this.delay(1000);
+    await this.delay(200); // Reduced for faster response (was 1000ms)
     // In demo mode, we can't actually upload files
     // Return a placeholder URL
     return { url: `demo://file/${file.name}` };
@@ -587,6 +587,26 @@ export class DemoModeAPI {
 }
 
 export const demoModeAPI = new DemoModeAPI();
+
+// Demo mode is ONLY enabled when the backend is truly unavailable
+// Demo credentials can be used without enabling demo mode if backend is available
 export const isDemoMode = () => localStorage.getItem('educonnect_demo_mode') === 'true';
-export const enableDemoMode = () => localStorage.setItem('educonnect_demo_mode', 'true');
-export const disableDemoMode = () => localStorage.removeItem('educonnect_demo_mode');
+export const enableDemoMode = () => {
+  console.log('[EduConnect] 🔴 ACTIVATING DEMO MODE - Backend unavailable');
+  localStorage.setItem('educonnect_demo_mode', 'true');
+};
+export const disableDemoMode = () => {
+  console.log('[EduConnect] 🟢 DISABLING DEMO MODE - Backend available');
+  localStorage.removeItem('educonnect_demo_mode');
+};
+
+// Check if using demo credentials (not the same as demo mode)
+export const isDemoCredentials = () => {
+  const demoEmails = ['teacher@demo.com', 'student@demo.com', 'student2@demo.com'];
+  const currentUserId = localStorage.getItem('educonnect_current_user');
+  if (!currentUserId) return false;
+  
+  const users = new DemoModeStorage().getUsers();
+  const user = users.find(u => u.id === currentUserId);
+  return user ? demoEmails.includes(user.email) : false;
+};

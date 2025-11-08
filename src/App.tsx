@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { createClient } from "./utils/supabase/client";
 import { apiClient } from "./utils/api";
+import { AuthManager, initializeAuth } from "./utils/auth-manager";
 import { LoginForm } from "./components/LoginForm";
 import { TeacherDashboard } from "./components/TeacherDashboard";
 import { StudentDashboard } from "./components/StudentDashboard";
@@ -12,7 +12,20 @@ import {
 } from "./utils/LanguageContext";
 import { Toaster } from "./components/ui/sonner";
 import { enableDemoMode, isDemoMode } from "./utils/demo-mode";
-import { projectId } from "./utils/supabase/info";
+import { projectId } from "./utils/api";
+import { CACHE_BUSTER_ID } from "./CACHE_BUSTER_V9.js";
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VERSION DE BUILD - FORZAR RECOMPILACION NUCLEAR
+// ═══════════════════════════════════════════════════════════════════════════
+const EDUCONNECT_BUILD_VERSION = "9.4.0-QUESTION-GENERATOR-INTEGRATED-20241107";
+const SUPABASE_CLIENT_REMOVED = true; // Frontend ahora usa solo fetch nativo
+const BACKEND_AUTH_ENDPOINTS = ["/login", "/signup"]; // Nuevos endpoints agregados
+const WINDOW_FETCH_FORCED = true; // ✅ window.fetch() forzado en todo el frontend
+const BACKEND_URL_FIXED = true; // 🔧 CRÍTICO: /server/ no /gemini-handler/
+const FAST_LOGIN_ENABLED = true; // ⚡ Login optimizado: 1.5s timeout, delays reducidos
+const QUESTION_GENERATOR_ACTIVE = true; // ✨ Generador de preguntas sin IA integrado
+// ═══════════════════════════════════════════════════════════════════════════
 
 function LoadingScreen() {
   const { t } = useLanguage();
@@ -27,11 +40,35 @@ function LoadingScreen() {
 }
 
 export default function App() {
+  /*
+   * ╔═══════════════════════════════════════════════════════════════════════╗
+   * ║  FORZANDO RECOMPILACION NUCLEAR - VERSION FINAL V9                    ║
+   * ║  ELIMINACION COMPLETA DE SUPABASE JS DEL FRONTEND                     ║
+   * ║  FECHA: 2024-11-07                                                    ║
+   * ║  CAMBIOS CRITICOS:                                                    ║
+   * ║  - Cliente Supabase eliminado del frontend                            ║
+   * ║  - Uso exclusivo de fetch nativo del navegador                        ║
+   * ║  - Nuevos endpoints /login y /signup en backend                       ║
+   * ║  - AuthManager como unica fuente de tokens                            ║
+   * ║  - Este comentario invalida cache del bundler de Figma Make           ║
+   * ╚═══════════════════════════════════════════════════════════════════════╝
+   */
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [serverChecked, setServerChecked] = useState(false);
 
   useEffect(() => {
+    // Log de versión para verificar recompilación
+    console.log(`%c[EduConnect] Build Version: ${EDUCONNECT_BUILD_VERSION}`, 'color: #84cc16; font-weight: bold;');
+    console.log(`%c[EduConnect] Cache Buster ID: ${CACHE_BUSTER_ID}`, 'color: #3b82f6; font-weight: bold;');
+    console.log(`%c[EduConnect] Supabase Client Removed: ${SUPABASE_CLIENT_REMOVED}`, 'color: #10b981;');
+    console.log(`%c[EduConnect] ⚡ Window.Fetch Forced: ${WINDOW_FETCH_FORCED}`, 'color: #f59e0b; font-weight: bold; font-size: 14px;');
+    console.log(`%c[EduConnect] 🔧 Backend URL Fixed: ${BACKEND_URL_FIXED} (/server/ not /gemini-handler/)`, 'color: #ef4444; font-weight: bold; font-size: 14px;');
+    console.log(`%c[EduConnect] ✅ Usando window.fetch nativo en TODO el frontend`, 'color: #10b981;');
+    
+    // Inicializar sistema de autenticación y restaurar token si existe
+    initializeAuth();
+    
     // First check if server is available
     checkServerAvailability();
   }, []);
@@ -44,11 +81,12 @@ export default function App() {
       const controller = new AbortController();
       const timeoutId = setTimeout(
         () => controller.abort(),
-        5000,
-      ); // Increased to 5 seconds
+        1500,
+      ); // Reduced to 1.5 seconds for faster demo mode activation
 
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-05c2b65f/health`,
+      // Usar window.fetch explícitamente para evitar conflictos con polyfills
+      const response = await window.fetch(
+        `https://${projectId}.supabase.co/functions/v1/server/make-server-05c2b65f/health`,
         { method: "GET", signal: controller.signal },
       );
 
@@ -58,6 +96,8 @@ export default function App() {
         console.log(
           "[EduConnect] ✅ Servidor disponible - Todas las funciones activas",
         );
+        // Ensure demo mode is disabled if server is available
+        localStorage.removeItem('educonnect_demo_mode');
       } else {
         console.log(
           "[EduConnect] ⚠️ Servidor respondió con error, activando modo demo",
@@ -70,7 +110,7 @@ export default function App() {
         error.message,
       );
       console.log(
-        "[EduConnect] Activando modo demo (sin IA ni subida de archivos)",
+        "[EduConnect] ⚡ Activando modo demo rápido (login optimizado)",
       );
       enableDemoMode();
     } finally {
@@ -81,22 +121,23 @@ export default function App() {
 
   const checkSession = async () => {
     try {
-      // Skip Supabase session check if in demo mode
+      // Skip session check if in demo mode
       if (isDemoMode()) {
         setIsLoading(false);
         return;
       }
 
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session?.access_token) {
-        apiClient.setToken(session.access_token);
+      // Check if we have a valid token in AuthManager
+      const token = AuthManager.getToken();
+      
+      if (token) {
+        apiClient.setToken(token);
+        
         try {
-          const { user: userData } =
-            await apiClient.getCurrentUser();
+          const { user: userData } = await apiClient.getCurrentUser();
+
+          // Guardar user ID
+          AuthManager.saveUserId(userData.id);
 
           // Load avatar from localStorage if available
           const savedAvatar = localStorage.getItem(
@@ -106,11 +147,13 @@ export default function App() {
             userData.avatar = savedAvatar;
           }
 
+          console.log('[App] ✅ Sesión restaurada desde AuthManager');
           setUser(userData);
         } catch (error: any) {
           // If getCurrentUser fails, clear the session
           console.error("Error loading user:", error);
-          await supabase.auth.signOut();
+          AuthManager.clearAll();
+          apiClient.setToken(null);
         }
       }
     } catch (error) {
@@ -140,10 +183,11 @@ export default function App() {
 
   const handleLogout = async () => {
     if (!isDemoMode()) {
-      const supabase = createClient();
-      await supabase.auth.signOut();
+      // No longer using Supabase client in frontend
     }
-    apiClient.setToken(null);
+    // Limpiar todos los datos de autenticación con AuthManager
+    AuthManager.clearAll();
+    console.log('[App] ✅ Sesión cerrada, token eliminado');
     setUser(null);
   };
 

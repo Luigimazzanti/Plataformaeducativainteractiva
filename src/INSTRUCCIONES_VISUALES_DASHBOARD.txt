@@ -1,0 +1,365 @@
+═══════════════════════════════════════════════════════════════════════════
+         🎯 INSTRUCCIONES VISUALES - DASHBOARD DE SUPABASE
+═══════════════════════════════════════════════════════════════════════════
+
+
+PROBLEMA ACTUAL:
+════════════════
+Cuando creas "index.ts" y haces Deploy, el archivo DESAPARECE.
+
+¿POR QUÉ?
+═════════
+Porque todavía existe "index.tsx" y Supabase solo mantiene UNO de ellos.
+
+
+SOLUCIÓN - OPCIÓN 1: RENOMBRAR (2 minutos)
+═══════════════════════════════════════════════════════════════════════════
+
+Paso 1: Abrir el Dashboard
+───────────────────────────
+🌐 https://supabase.com/dashboard
+   → Login con tu cuenta
+   → Selecciona proyecto: ldhimtgexjbmwobkmcwr
+
+
+Paso 2: Ir a Edge Functions
+────────────────────────────
+📍 Sidebar izquierdo → "Edge Functions"
+   → Click en la función llamada "server"
+
+
+Paso 3: Localizar el archivo
+─────────────────────────────
+En la lista de archivos, verás:
+   📄 index.tsx    ← Este es el problema
+   📄 kv_store.ts
+   📄 kv_store.tsx
+
+
+Paso 4: RENOMBRAR (no crear nuevo)
+───────────────────────────────────
+   ⚠️ NO HAGAS CLICK EN "Add file" ⚠️
+   
+   En su lugar:
+   
+   A) Click en "index.tsx" para abrirlo
+   
+   B) En la parte superior verás:
+      ┌─────────────────────────────┐
+      │  📄 index.tsx          [x]  │  ← Click aquí en el nombre
+      └─────────────────────────────┘
+   
+   C) El nombre debe volverse EDITABLE
+   
+   D) Cambia:
+      index.tsx  →  index.ts
+      (Elimina la "x")
+   
+   E) Presiona ENTER o click fuera
+
+
+Paso 5: Guardar
+────────────────
+   Click en "Save" o presiona:
+   - Ctrl + S  (Windows/Linux)
+   - Cmd + S   (Mac)
+
+
+Paso 6: Deploy
+───────────────
+   Click en el botón "Deploy" (generalmente en la esquina superior derecha)
+   
+   Espera el mensaje:
+   ✅ "Deployment successful"
+   o
+   ✅ "Function deployed successfully"
+
+
+Paso 7: Verificar
+──────────────────
+   Abre una terminal o navegador y ejecuta:
+   
+   curl https://ldhimtgexjbmwobkmcwr.supabase.co/functions/v1/server/make-server-05c2b65f/health
+   
+   Debe devolver:
+   {"status":"ok"}
+   
+   ✅ Si ves esto, ¡FUNCIONA!
+
+
+═══════════════════════════════════════════════════════════════════════════
+
+
+SOLUCIÓN - OPCIÓN 2: ELIMINAR Y RECREAR (3 minutos)
+═══════════════════════════════════════════════════════════════════════════
+
+Si la Opción 1 no funciona (algunos dashboards no permiten renombrar):
+
+
+Paso 1: Copiar el contenido
+────────────────────────────
+   A) Abre el archivo "index.tsx" en el Dashboard
+   
+   B) Selecciona TODO el contenido:
+      - Ctrl + A  (Windows/Linux)
+      - Cmd + A   (Mac)
+   
+   C) Copia:
+      - Ctrl + C  (Windows/Linux)
+      - Cmd + C   (Mac)
+   
+   D) Pega en Notepad/TextEdit en tu computadora (SEGURIDAD)
+
+
+Paso 2: Eliminar el archivo viejo
+──────────────────────────────────
+   A) Vuelve a la lista de archivos (botón "Back" o "<-")
+   
+   B) Encuentra "index.tsx"
+   
+   C) Click en los tres puntos "..." o ícono de basura 🗑️
+   
+   D) Selecciona "Delete" o "Remove"
+   
+   E) Confirma la eliminación (puede pedir confirmación)
+   
+   F) ✅ El archivo "index.tsx" debe DESAPARECER de la lista
+
+
+Paso 3: Crear archivo nuevo
+────────────────────────────
+   A) Click en "Add file" o "New file" o ícono "+"
+   
+   B) En el campo de nombre, escribe EXACTAMENTE:
+      index.ts
+      
+      ⚠️ IMPORTANTE: sin la "x", debe ser "index.ts" NO "index.tsx"
+   
+   C) En el editor que aparece, PEGA el contenido que copiaste antes:
+      - Ctrl + V  (Windows/Linux)
+      - Cmd + V   (Mac)
+   
+   D) Verifica que el contenido comienza con:
+      import { Hono } from "npm:hono";
+      
+      Y termina con:
+      Deno.serve(app.fetch);
+
+
+Paso 4: Guardar
+────────────────
+   Click en "Save" o presiona Ctrl+S / Cmd+S
+
+
+Paso 5: Deploy
+───────────────
+   Click en "Deploy"
+   
+   Espera confirmación:
+   ✅ "Deployment successful"
+
+
+Paso 6: Verificar estructura
+─────────────────────────────
+   En la lista de archivos ahora debes ver:
+   
+   ✅ index.ts       ← NUEVO (sin "x")
+   ✅ kv_store.ts
+   ⚠️  kv_store.tsx  (este puede quedarse, no afecta)
+   
+   ❌ NO debe aparecer "index.tsx"
+
+
+Paso 7: Verificar funcionamiento
+─────────────────────────────────
+   curl https://ldhimtgexjbmwobkmcwr.supabase.co/functions/v1/server/make-server-05c2b65f/health
+   
+   Debe devolver: {"status":"ok"}
+
+
+═══════════════════════════════════════════════════════════════════════════
+
+
+VERIFICACIÓN COMPLETA DESDE LA APP
+═══════════════════════════════════════════════════════════════════════════
+
+Paso 1: Abrir la aplicación
+────────────────────────────
+   http://localhost:3000
+   o tu URL de producción
+
+
+Paso 2: Login
+──────────────
+   Usuario: teacher@demo.com
+   Contraseña: demo123
+
+
+Paso 3: Abrir Generador IA
+───────────────────────────
+   A) Click en "Crear Tarea"
+   B) Busca el botón "Generador de Preguntas con IA" (ícono ⚡)
+   C) Click en ese botón
+   D) Debe abrir un diálogo grande
+
+
+Paso 4: Probar generación
+──────────────────────────
+   A) En el textarea grande, pega este texto:
+   
+      La fotosíntesis es el proceso mediante el cual las plantas 
+      convierten la luz solar en energía química. Este proceso 
+      ocurre en los cloroplastos, que contienen clorofila, el 
+      pigmento que da a las plantas su color verde.
+   
+   B) Click en "Generar Preguntas"
+   
+   C) ESPERA 3-5 SEGUNDOS (NO 150 segundos como antes)
+   
+   D) Debe aparecer:
+      ✅ "✨ X preguntas generadas con IA de Gemini"
+      ✅ Lista de preguntas con diferentes tipos
+      ✅ Estadísticas del cuestionario
+
+
+Paso 5: Confirmar éxito
+────────────────────────
+   Si ves las preguntas generadas:
+   
+   🎉 ¡FUNCIONA PERFECTAMENTE!
+   
+   El generador IA está completamente operativo.
+
+
+═══════════════════════════════════════════════════════════════════════════
+
+
+ERRORES COMUNES Y SOLUCIONES
+═══════════════════════════════════════════════════════════════════════════
+
+Error: "index.ts desaparece después de Deploy"
+──────────────────────────────────────────────
+❌ Causa: Todavía existe "index.tsx"
+✅ Solución: 
+   1. Lista TODOS los archivos
+   2. Elimina "index.tsx" primero
+   3. LUEGO crea "index.ts"
+   4. Deploy
+
+
+Error: "Cannot read properties of undefined"
+─────────────────────────────────────────────
+❌ Causa: El archivo está vacío o corrupto
+✅ Solución:
+   1. Abre "index.ts"
+   2. Verifica que tiene contenido
+   3. Primera línea debe ser: import { Hono } from "npm:hono";
+   4. Última línea debe ser: Deno.serve(app.fetch);
+   5. Si está vacío, copia el contenido de index.tsx antes de eliminarlo
+
+
+Error: "Deployment failed"
+──────────────────────────
+❌ Causa: Error de sintaxis o archivo incorrecto
+✅ Solución:
+   1. Revisa los logs del deploy (botón "Logs" o "View logs")
+   2. Busca el error específico
+   3. Asegúrate de que el archivo es index.ts (NO index.tsx)
+
+
+Error: 504 Gateway Timeout
+───────────────────────────
+❌ Causa: El servidor no se desplegó correctamente
+✅ Solución:
+   1. Verifica que el archivo sea index.ts (no .tsx)
+   2. Vuelve a hacer deploy
+   3. Espera 1-2 minutos
+   4. Prueba el health check de nuevo
+
+
+═══════════════════════════════════════════════════════════════════════════
+
+
+DIAGRAMA VISUAL DEL PROCESO
+═══════════════════════════════════════════════════════════════════════════
+
+ANTES (NO FUNCIONA):
+────────────────────
+
+    Dashboard de Supabase
+    ┌─────────────────────┐
+    │ 📁 server/          │
+    │   📄 index.tsx  ❌  │  ← Problema: extensión .tsx
+    │   📄 kv_store.ts    │
+    └─────────────────────┘
+            │
+            │ Deploy
+            ▼
+        ❌ Falla
+        (Deno no soporta .tsx)
+            │
+            ▼
+    Frontend hace request
+            │
+            ▼
+        ⏱️ Timeout 504
+        (150 segundos)
+
+
+DESPUÉS (FUNCIONA):
+───────────────────
+
+    Dashboard de Supabase
+    ┌─────────────────────┐
+    │ 📁 server/          │
+    │   📄 index.ts   ✅  │  ← Correcto: extensión .ts
+    │   📄 kv_store.ts    │
+    └─────────────────────┘
+            │
+            │ Deploy
+            ▼
+        ✅ Exitoso
+        (Deno compila correctamente)
+            │
+            ▼
+    Frontend hace request
+            │
+            ▼
+        ⚡ Respuesta en 3-5s
+        ✅ {"questions": [...]}
+
+
+═══════════════════════════════════════════════════════════════════════════
+
+
+RESUMEN
+═══════════════════════════════════════════════════════════════════════════
+
+✅ ACCIÓN REQUERIDA:
+   Cambiar: index.tsx → index.ts
+
+✅ MÉTODOS DISPONIBLES:
+   1. Renombrar el archivo (más rápido)
+   2. Eliminar y recrear (más seguro)
+
+✅ TIEMPO:
+   2-3 minutos
+
+✅ RESULTADO:
+   Generador IA funciona perfectamente
+
+⚠️ IMPORTANTE:
+   Solo debe existir index.ts (NO index.tsx)
+
+✅ VERIFICACIÓN:
+   Health check debe devolver {"status":"ok"}
+   Generador IA debe responder en 3-5 segundos
+
+
+═══════════════════════════════════════════════════════════════════════════
+
+¿Necesitas ayuda adicional?
+📄 Lee: SOLUCION_DASHBOARD_SUPABASE.md (más detalles)
+📄 Lee: CHECKLIST_POST_FIX.md (verificación completa)
+
+═══════════════════════════════════════════════════════════════════════════

@@ -2,14 +2,78 @@ import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import * as kv from "./kv_store.tsx";
+import * as kv from "./kv_store.ts";
 
 const app = new Hono();
 app.use('*', logger(console.log));
 app.use("/*", cors({ origin: "*", allowHeaders: ["Content-Type", "Authorization"], allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], exposeHeaders: ["Content-Length"], maxAge: 600 }));
 
-const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+const supabase = createClient(Deno.env.get('SB_URL')!, Deno.env.get('SB_SERVICE_KEY')!);
 const bucketName = 'make-05c2b65f-files';
+
+// Demo users data for demo tokens
+const demoUsers: Record<string, any> = {
+  'demo_token_demo-teacher-1': {
+    id: 'demo-teacher-1',
+    email: 'teacher@demo.com',
+    name: 'Demo Teacher',
+    role: 'teacher'
+  },
+  'demo_token_demo-student-1': {
+    id: 'demo-student-1',
+    email: 'student@demo.com',
+    name: 'Demo Student',
+    role: 'student'
+  },
+  'demo_token_demo-student-2': {
+    id: 'demo-student-2',
+    email: 'student2@demo.com',
+    name: 'Demo Student 2',
+    role: 'student'
+  }
+};
+
+// Helper function to authenticate user (supports both Supabase and demo tokens)
+async function authenticateUser(token: string | undefined) {
+  if (!token) {
+    return { user: null, error: 'No token provided' };
+  }
+  
+  // Check if admin token
+  if (token.startsWith('admin_')) {
+    return {
+      user: {
+        id: 'admin',
+        email: 'admin@educonnect.com',
+        name: 'Administrator',
+        role: 'admin'
+      },
+      error: null
+    };
+  }
+  
+  // Check if demo token
+  if (token.startsWith('demo_token_')) {
+    const demoUser = demoUsers[token];
+    if (demoUser) {
+      // Ensure demo user exists in KV store
+      const kvUser = await kv.get(`user:${demoUser.id}`);
+      if (!kvUser) {
+        await kv.set(`user:${demoUser.id}`, demoUser);
+      }
+      return { user: demoUser, error: null };
+    }
+    return { user: null, error: 'Invalid demo token' };
+  }
+  
+  // Supabase token
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    return { user: null, error: error?.message || 'Unauthorized' };
+  }
+  
+  return { user, error: null };
+}
 
 // Initialize bucket on first use instead of at startup
 let bucketInitialized = false;
@@ -27,7 +91,154 @@ async function ensureBucket() {
   }
 }
 
-app.get("/make-server-05c2b65f/health", (c) => c.json({ status: "ok" }));
+// Initialize demo users and admin in KV store
+let demoDataInitialized = false;
+async function ensureDemoData() {
+  if (!demoDataInitialized) {
+    try {
+      // Admin user
+      const adminExists = await kv.get('user:admin');
+      if (!adminExists) {
+        await kv.set('user:admin', {
+          id: 'admin',
+          email: 'admin@educonnect.com',
+          name: 'Administrator',
+          role: 'admin',
+          createdAt: new Date().toISOString()
+        });
+      }
+      
+      // Demo teacher
+      const teacherExists = await kv.get('user:demo-teacher-1');
+      if (!teacherExists) {
+        await kv.set('user:demo-teacher-1', {
+          id: 'demo-teacher-1',
+          email: 'teacher@demo.com',
+          name: 'Demo Teacher',
+          role: 'teacher',
+          createdAt: new Date().toISOString()
+        });
+      }
+      
+      // Demo students
+      const student1Exists = await kv.get('user:demo-student-1');
+      if (!student1Exists) {
+        await kv.set('user:demo-student-1', {
+          id: 'demo-student-1',
+          email: 'student@demo.com',
+          name: 'Demo Student',
+          role: 'student',
+          createdAt: new Date().toISOString()
+        });
+        await kv.set('student:demo-student-1:assignments', []);
+      }
+      
+      const student2Exists = await kv.get('user:demo-student-2');
+      if (!student2Exists) {
+        await kv.set('user:demo-student-2', {
+          id: 'demo-student-2',
+          email: 'student2@demo.com',
+          name: 'Demo Student 2',
+          role: 'student',
+          createdAt: new Date().toISOString()
+        });
+        await kv.set('student:demo-student-2:assignments', []);
+      }
+      
+      demoDataInitialized = true;
+      console.log('Demo data initialized successfully');
+    } catch (error) {
+      console.error('Error initializing demo data:', error);
+    }
+  }
+}
+
+app.get("/make-server-05c2b65f/health", async (c) => {
+  // Initialize demo data on health check (lazy initialization)
+  await ensureDemoData();
+  return c.json({ status: "ok" });
+});
+
+// Login endpoint
+app.post("/make-server-05c2b65f/login", async (c) => {
+  try {
+    const { email, password } = await c.req.json();
+    if (!email || !password) return c.json({ error: 'Missing fields' }, 400);
+    
+    // Check for admin login (special case)
+    if (email === 'admin' && password === 'EduConnect@Admin2024') {
+      const adminUser = {
+        id: 'admin',
+        email: 'admin@educonnect.com',
+        name: 'Administrator',
+        role: 'admin'
+      };
+      return c.json({ 
+        user: adminUser,
+        token: 'admin_token_' + Date.now()
+      });
+    }
+    
+    // Check for demo users
+    const demoCredentials: Record<string, { password: string, userData: any }> = {
+      'teacher@demo.com': {
+        password: 'demo123',
+        userData: {
+          id: 'demo-teacher-1',
+          email: 'teacher@demo.com',
+          name: 'Demo Teacher',
+          role: 'teacher'
+        }
+      },
+      'student@demo.com': {
+        password: 'demo123',
+        userData: {
+          id: 'demo-student-1',
+          email: 'student@demo.com',
+          name: 'Demo Student',
+          role: 'student'
+        }
+      },
+      'student2@demo.com': {
+        password: 'demo123',
+        userData: {
+          id: 'demo-student-2',
+          email: 'student2@demo.com',
+          name: 'Demo Student 2',
+          role: 'student'
+        }
+      }
+    };
+    
+    // Check if it's a demo user
+    if (demoCredentials[email]) {
+      if (demoCredentials[email].password === password) {
+        const userData = demoCredentials[email].userData;
+        return c.json({ 
+          user: userData,
+          token: `demo_token_${userData.id}`
+        });
+      } else {
+        return c.json({ error: 'Invalid credentials' }, 401);
+      }
+    }
+    
+    // Try Supabase Auth for real users
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return c.json({ error: error.message }, 401);
+    
+    // Get user data from KV store
+    const userData = await kv.get(`user:${data.user.id}`);
+    
+    return c.json({ 
+      user: userData || { id: data.user.id, email: data.user.email, ...data.user.user_metadata },
+      token: data.session.access_token 
+    });
+  } catch (error: any) {
+    console.error('Login error:', error);
+    return c.json({ error: 'Server error: ' + error.message }, 500);
+  }
+});
 
 app.post("/make-server-05c2b65f/signup", async (c) => {
   try {
@@ -38,10 +249,15 @@ app.post("/make-server-05c2b65f/signup", async (c) => {
     const { data, error } = await supabase.auth.admin.createUser({ email, password, user_metadata: { name, role }, email_confirm: true });
     if (error) return c.json({ error: error.message }, 400);
     
-    await kv.set(`user:${data.user.id}`, { id: data.user.id, email, name, role, createdAt: new Date().toISOString() });
+    const userData = { id: data.user.id, email, name, role, createdAt: new Date().toISOString() };
+    await kv.set(`user:${data.user.id}`, userData);
     if (role === 'student') await kv.set(`student:${data.user.id}:assignments`, []);
     
-    return c.json({ user: data.user });
+    // Sign in to get token
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError) return c.json({ error: signInError.message }, 400);
+    
+    return c.json({ user: userData, token: signInData.session.access_token });
   } catch (error) {
     return c.json({ error: 'Server error' }, 500);
   }
@@ -50,22 +266,8 @@ app.post("/make-server-05c2b65f/signup", async (c) => {
 app.get("/make-server-05c2b65f/user", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    if (!token) return c.json({ error: 'No token' }, 401);
-    
-    // Check if admin token
-    if (token.startsWith('admin_')) {
-      return c.json({ 
-        user: { 
-          id: 'admin', 
-          email: 'admin@educonnect.com', 
-          name: 'Administrator', 
-          role: 'admin' 
-        } 
-      });
-    }
-    
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const userData = await kv.get(`user:${user.id}`);
     return c.json({ user: userData || user });
@@ -77,8 +279,8 @@ app.get("/make-server-05c2b65f/user", async (c) => {
 app.put("/make-server-05c2b65f/user/profile", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const updates = await c.req.json();
     const userData = await kv.get(`user:${user.id}`);
@@ -95,8 +297,8 @@ app.put("/make-server-05c2b65f/user/profile", async (c) => {
 app.post("/make-server-05c2b65f/assignments", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const userData = await kv.get(`user:${user.id}`);
     if (userData?.role !== 'teacher') return c.json({ error: 'Teachers only' }, 403);
@@ -119,8 +321,8 @@ app.post("/make-server-05c2b65f/assignments", async (c) => {
 app.get("/make-server-05c2b65f/assignments", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const userData = await kv.get(`user:${user.id}`);
     if (userData?.role === 'teacher') {
@@ -145,8 +347,8 @@ app.get("/make-server-05c2b65f/assignments", async (c) => {
 app.get("/make-server-05c2b65f/assignments/:id", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const assignment = await kv.get(c.req.param('id'));
     if (!assignment) return c.json({ error: 'Not found' }, 404);
@@ -159,8 +361,8 @@ app.get("/make-server-05c2b65f/assignments/:id", async (c) => {
 app.put("/make-server-05c2b65f/assignments/:id", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const userData = await kv.get(`user:${user.id}`);
     if (userData?.role !== 'teacher') return c.json({ error: 'Teachers only' }, 403);
@@ -182,8 +384,8 @@ app.put("/make-server-05c2b65f/assignments/:id", async (c) => {
 app.delete("/make-server-05c2b65f/assignments/:id", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const userData = await kv.get(`user:${user.id}`);
     if (userData?.role !== 'teacher') return c.json({ error: 'Teachers only' }, 403);
@@ -205,8 +407,8 @@ app.delete("/make-server-05c2b65f/assignments/:id", async (c) => {
 app.post("/make-server-05c2b65f/submissions", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const userData = await kv.get(`user:${user.id}`);
     if (userData?.role !== 'student') return c.json({ error: 'Students only' }, 403);
@@ -229,8 +431,8 @@ app.post("/make-server-05c2b65f/submissions", async (c) => {
 app.get("/make-server-05c2b65f/assignments/:id/submissions", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const key = `assignment:${c.req.param('id')}:submissions`;
     const ids = await kv.get(key) || [];
@@ -244,8 +446,8 @@ app.get("/make-server-05c2b65f/assignments/:id/submissions", async (c) => {
 app.put("/make-server-05c2b65f/submissions/:id/grade", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const userData = await kv.get(`user:${user.id}`);
     if (userData?.role !== 'teacher') return c.json({ error: 'Teachers only' }, 403);
@@ -266,8 +468,8 @@ app.put("/make-server-05c2b65f/submissions/:id/grade", async (c) => {
 app.get("/make-server-05c2b65f/my-submissions", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const all = await kv.getByPrefix('submission:');
     return c.json({ submissions: all.filter(s => s && s.studentId === user.id) });
@@ -279,8 +481,8 @@ app.get("/make-server-05c2b65f/my-submissions", async (c) => {
 app.post("/make-server-05c2b65f/upload", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     await ensureBucket();
     
@@ -302,8 +504,8 @@ app.post("/make-server-05c2b65f/upload", async (c) => {
 app.get("/make-server-05c2b65f/students", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const userData = await kv.get(`user:${user.id}`);
     if (userData?.role !== 'teacher') return c.json({ error: 'Teachers only' }, 403);
@@ -320,8 +522,8 @@ app.get("/make-server-05c2b65f/students", async (c) => {
 app.post("/make-server-05c2b65f/assign-student", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const userData = await kv.get(`user:${user.id}`);
     if (userData?.role !== 'teacher') return c.json({ error: 'Teachers only' }, 403);
@@ -350,8 +552,8 @@ app.post("/make-server-05c2b65f/assign-student", async (c) => {
 app.get("/make-server-05c2b65f/my-students", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const userData = await kv.get(`user:${user.id}`);
     if (userData?.role !== 'teacher') return c.json({ error: 'Teachers only' }, 403);
@@ -367,8 +569,8 @@ app.get("/make-server-05c2b65f/my-students", async (c) => {
 app.post("/make-server-05c2b65f/assign-task", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const userData = await kv.get(`user:${user.id}`);
     if (userData?.role !== 'teacher') return c.json({ error: 'Teachers only' }, 403);
@@ -396,8 +598,8 @@ app.get("/make-server-05c2b65f/assignments/:id/assigned-students", async (c) => 
       return c.json({ students: students.filter(s => s), studentIds: ids });
     }
     
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const id = c.req.param('id');
     const ids = await kv.get(`${id}:assignedStudents`) || [];
@@ -529,15 +731,10 @@ app.post("/make-server-05c2b65f/admin/users/:userId/block", async (c) => {
 app.post("/make-server-05c2b65f/notes", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    if (!token) {
-      console.error('No token provided for POST /notes');
-      return c.json({ error: 'No token provided' }, 401);
-    }
-    
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    const { user, error } = await authenticateUser(token);
     if (error || !user) {
       console.error('Auth error in POST /notes:', error);
-      return c.json({ error: 'Unauthorized' }, 401);
+      return c.json({ error: error || 'Unauthorized' }, 401);
     }
     
     const userData = await kv.get(`user:${user.id}`);
@@ -576,15 +773,10 @@ app.post("/make-server-05c2b65f/notes", async (c) => {
 app.get("/make-server-05c2b65f/notes", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    if (!token) {
-      console.error('No token provided for /notes');
-      return c.json({ error: 'No token provided' }, 401);
-    }
-    
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    const { user, error } = await authenticateUser(token);
     if (error || !user) {
       console.error('Auth error in /notes:', error);
-      return c.json({ error: 'Unauthorized' }, 401);
+      return c.json({ error: error || 'Unauthorized' }, 401);
     }
     
     const userData = await kv.get(`user:${user.id}`);
@@ -619,8 +811,8 @@ app.get("/make-server-05c2b65f/notes", async (c) => {
 app.delete("/make-server-05c2b65f/notes/:id", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const userData = await kv.get(`user:${user.id}`);
     if (userData?.role !== 'teacher') return c.json({ error: 'Teachers only' }, 403);
@@ -642,8 +834,8 @@ app.delete("/make-server-05c2b65f/notes/:id", async (c) => {
 app.post("/make-server-05c2b65f/assign-note", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const userData = await kv.get(`user:${user.id}`);
     if (userData?.role !== 'teacher') return c.json({ error: 'Teachers only' }, 403);
@@ -670,8 +862,8 @@ app.post("/make-server-05c2b65f/assign-note", async (c) => {
 app.post("/make-server-05c2b65f/notes/:id/mark-read", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const id = c.req.param('id');
     await kv.set(`${id}:student:${user.id}:status`, 'read');
@@ -685,8 +877,8 @@ app.post("/make-server-05c2b65f/notes/:id/mark-read", async (c) => {
 app.post("/make-server-05c2b65f/notes/:id/mark-opened", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const id = c.req.param('id');
     const currentStatus = await kv.get(`${id}:student:${user.id}:status`);
@@ -705,8 +897,8 @@ app.post("/make-server-05c2b65f/notes/:id/mark-opened", async (c) => {
 app.get("/make-server-05c2b65f/notes/:id/assigned-students", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const id = c.req.param('id');
     const ids = await kv.get(`${id}:assignedStudents`) || [];
@@ -721,15 +913,10 @@ app.get("/make-server-05c2b65f/notes/:id/assigned-students", async (c) => {
 app.post("/make-server-05c2b65f/ai/generate-task", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    if (!token) {
-      console.error('No token provided for AI task generation');
-      return c.json({ error: 'No token provided' }, 401);
-    }
-    
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    const { user, error } = await authenticateUser(token);
     if (error || !user) {
       console.error('Auth error in AI task generation:', error);
-      return c.json({ error: 'Unauthorized' }, 401);
+      return c.json({ error: error || 'Unauthorized' }, 401);
     }
     
     const userData = await kv.get(`user:${user.id}`);
@@ -740,11 +927,11 @@ app.post("/make-server-05c2b65f/ai/generate-task", async (c) => {
     
     console.log('AI task generation request:', { type, spanishLevel, difficulty });
     
-    // Get OpenAI API key
-    const openaiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiKey) {
-      console.error('OpenAI API key not configured');
-      return c.json({ error: 'OpenAI API key not configured' }, 500);
+    // Get Gemini API key
+    const geminiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiKey) {
+      console.error('Gemini API key not configured');
+      return c.json({ error: 'Gemini API key not configured' }, 500);
     }
     
     // Build difficulty and language level instructions
@@ -758,7 +945,6 @@ app.post("/make-server-05c2b65f/ai/generate-task", async (c) => {
                             'nivel estándar de español';
     
     let prompt = '';
-    let messages: any[] = [];
     
     if (type === 'text') {
       prompt = `Eres un asistente educativo experto. Analiza el siguiente contenido y genera una tarea educativa estructurada.
@@ -773,11 +959,12 @@ ${content}
 Genera una tarea que incluya:
 1. Un título descriptivo y atractivo (adaptado al nivel de español especificado)
 2. Una descripción clara de los objetivos de aprendizaje (adaptada al nivel de español)
-3. Entre 5-10 preguntas variadas con la dificultad especificada que incluyan:
-   - Preguntas de opción múltiple (4 opciones cada una)
-   - Preguntas de verdadero/falso
-   - Preguntas de respuesta corta
-   - Al menos una pregunta de desarrollo/ensayo
+3. EXACTAMENTE 10 EJERCICIOS VARIADOS con diferentes tipos:
+   - 3 preguntas de opción múltiple (4 opciones cada una)
+   - 2 preguntas de verdadero/falso
+   - 2 preguntas de respuesta corta
+   - 2 preguntas de completar espacios (fill-in-blank)
+   - 1 pregunta de desarrollo/ensayo
 
 IMPORTANTE: Todas las preguntas, opciones y textos deben estar en ${spanishLevelText}.
 
@@ -787,31 +974,16 @@ Formato de respuesta JSON:
   "description": "Descripción de los objetivos",
   "questions": [
     {
-      "type": "multiple-choice|true-false|short-answer|essay",
+      "type": "multiple-choice|true-false|short-answer|fill-blank|essay",
       "question": "Texto de la pregunta",
       "options": ["Opción A", "Opción B", "Opción C", "Opción D"], // solo para multiple-choice
-      "correctAnswer": "Respuesta correcta", // para multiple-choice, true-false, short-answer
+      "correctAnswer": "Respuesta correcta", // para multiple-choice, true-false, short-answer, fill-blank
       "points": 10
     }
   ]
 }`;
-
-      messages = [
-        { role: 'system', content: 'Eres un asistente educativo experto que genera tareas educativas estructuradas. Siempre respondes en formato JSON válido.' },
-        { role: 'user', content: prompt }
-      ];
     } else if (type === 'image') {
-      messages = [
-        { 
-          role: 'system', 
-          content: 'Eres un asistente educativo experto que analiza imágenes y genera tareas educativas. Siempre respondes en formato JSON válido.' 
-        },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `Analiza esta imagen educativa y genera una tarea.
+      prompt = `Analiza esta imagen educativa y genera una tarea.
 
 IMPORTANTE - Requisitos:
 - Dificultad: ${difficultyText}
@@ -820,7 +992,12 @@ IMPORTANTE - Requisitos:
 Genera una tarea que incluya:
 1. Un título descriptivo (adaptado al nivel de español)
 2. Una descripción de los objetivos (adaptada al nivel de español)
-3. Entre 5-10 preguntas basadas en el contenido visual con la dificultad especificada
+3. EXACTAMENTE 10 EJERCICIOS VARIADOS basados en el contenido visual:
+   - 3 preguntas de opción múltiple (4 opciones cada una)
+   - 2 preguntas de verdadero/falso
+   - 2 preguntas de respuesta corta
+   - 2 preguntas de completar espacios (fill-in-blank)
+   - 1 pregunta de desarrollo/ensayo
 
 IMPORTANTE: Todas las preguntas y textos deben estar en ${spanishLevelText}.
 
@@ -830,22 +1007,14 @@ Formato JSON:
   "description": "Descripción",
   "questions": [
     {
-      "type": "multiple-choice|true-false|short-answer|essay",
+      "type": "multiple-choice|true-false|short-answer|fill-blank|essay",
       "question": "Pregunta",
       "options": ["A", "B", "C", "D"],
       "correctAnswer": "Respuesta",
       "points": 10
     }
   ]
-}`
-            },
-            {
-              type: 'image_url',
-              image_url: { url: fileUrl }
-            }
-          ]
-        }
-      ];
+}`;
     } else if (type === 'video') {
       prompt = `Eres un asistente educativo experto. Analiza el siguiente video educativo (URL: ${videoUrl}) y genera una tarea.
 
@@ -856,7 +1025,12 @@ IMPORTANTE - Requisitos:
 Genera una tarea que incluya:
 1. Un título relacionado con el contenido del video (adaptado al nivel de español)
 2. Una descripción de los objetivos de aprendizaje (adaptada al nivel de español)
-3. Entre 5-10 preguntas sobre el contenido del video con la dificultad especificada
+3. EXACTAMENTE 10 EJERCICIOS VARIADOS sobre el contenido del video:
+   - 3 preguntas de opción múltiple (4 opciones cada una)
+   - 2 preguntas de verdadero/falso
+   - 2 preguntas de respuesta corta
+   - 2 preguntas de completar espacios (fill-in-blank)
+   - 1 pregunta de desarrollo/ensayo
 
 IMPORTANTE: Todas las preguntas y textos deben estar en ${spanishLevelText}.
 
@@ -866,7 +1040,7 @@ Formato JSON:
   "description": "Descripción",
   "questions": [
     {
-      "type": "multiple-choice|true-false|short-answer|essay",
+      "type": "multiple-choice|true-false|short-answer|fill-blank|essay",
       "question": "Pregunta",
       "options": ["A", "B", "C", "D"],
       "correctAnswer": "Respuesta",
@@ -874,11 +1048,6 @@ Formato JSON:
     }
   ]
 }`;
-
-      messages = [
-        { role: 'system', content: 'Eres un asistente educativo experto. Siempre respondes en formato JSON válido.' },
-        { role: 'user', content: prompt }
-      ];
     } else if (type === 'pdf') {
       prompt = `Eres un asistente educativo experto. Se ha cargado un documento PDF educativo.
 
@@ -889,7 +1058,12 @@ IMPORTANTE - Requisitos:
 Genera una tarea educativa que incluya:
 1. Un título apropiado (adaptado al nivel de español)
 2. Una descripción de objetivos de aprendizaje (adaptada al nivel de español)
-3. Entre 5-10 preguntas variadas con la dificultad especificada
+3. EXACTAMENTE 10 EJERCICIOS VARIADOS:
+   - 3 preguntas de opción múltiple (4 opciones cada una)
+   - 2 preguntas de verdadero/falso
+   - 2 preguntas de respuesta corta
+   - 2 preguntas de completar espacios (fill-in-blank)
+   - 1 pregunta de desarrollo/ensayo
 
 IMPORTANTE: Todas las preguntas y textos deben estar en ${spanishLevelText}.
 
@@ -899,7 +1073,7 @@ Formato JSON:
   "description": "Análisis y comprensión del documento",
   "questions": [
     {
-      "type": "multiple-choice|true-false|short-answer|essay",
+      "type": "multiple-choice|true-false|short-answer|fill-blank|essay",
       "question": "Pregunta",
       "options": ["A", "B", "C", "D"],
       "correctAnswer": "Respuesta",
@@ -907,53 +1081,85 @@ Formato JSON:
     }
   ]
 }`;
-
-      messages = [
-        { role: 'system', content: 'Eres un asistente educativo experto. Siempre respondes en formato JSON válido.' },
-        { role: 'user', content: prompt }
-      ];
     }
     
-    // Call OpenAI API
-    console.log('Calling OpenAI API...');
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiKey}`
-      },
-      body: JSON.stringify({
-        model: type === 'image' ? 'gpt-4o' : 'gpt-4o-mini',
-        messages,
-        temperature: 0.7,
-        response_format: { type: 'json_object' }
-      })
-    });
+    // Call Gemini API
+    console.log('Calling Gemini API...');
     
-    if (!openaiResponse.ok) {
-      const errorData = await openaiResponse.json().catch(() => ({}));
-      console.error('OpenAI API error:', { status: openaiResponse.status, error: errorData });
+    // Build the request payload for Gemini
+    const geminiPayload: any = {
+      contents: [{
+        parts: [{
+          text: prompt
+        }]
+      }],
+      generationConfig: {
+        temperature: 0.7,
+        responseMimeType: 'application/json'
+      }
+    };
+    
+    // For images, add inline data (Gemini Flash supports image analysis)
+    if (type === 'image' && fileUrl) {
+      // Fetch the image and convert to base64
+      try {
+        const imageResponse = await fetch(fileUrl);
+        const imageBlob = await imageResponse.arrayBuffer();
+        const base64Image = btoa(String.fromCharCode(...new Uint8Array(imageBlob)));
+        const mimeType = imageResponse.headers.get('content-type') || 'image/jpeg';
+        
+        geminiPayload.contents[0].parts.unshift({
+          inline_data: {
+            mime_type: mimeType,
+            data: base64Image
+          }
+        });
+      } catch (imgError) {
+        console.error('Error loading image for Gemini:', imgError);
+      }
+    }
+    
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(geminiPayload)
+      }
+    );
+    
+    if (!geminiResponse.ok) {
+      const errorData = await geminiResponse.json().catch(() => ({}));
+      console.error('Gemini API error:', { status: geminiResponse.status, error: errorData });
       
       // Provide more helpful error messages
-      let errorMessage = errorData.error?.message || openaiResponse.statusText || 'Error desconocido';
+      let errorMessage = errorData.error?.message || geminiResponse.statusText || 'Error desconocido';
       
-      if (openaiResponse.status === 401) {
-        errorMessage = 'API key de OpenAI inválida. Verifica que la clave esté configurada correctamente en Supabase.';
-      } else if (openaiResponse.status === 429) {
-        errorMessage = 'Límite de tasa excedido. Has alcanzado el límite de solicitudes o tu cuenta de OpenAI no tiene créditos.';
-      } else if (openaiResponse.status === 500) {
-        errorMessage = 'Error del servidor de OpenAI. Intenta de nuevo en unos momentos.';
+      if (geminiResponse.status === 401 || geminiResponse.status === 403) {
+        errorMessage = 'API key de Gemini inválida. Verifica que la clave esté configurada correctamente en Supabase.';
+      } else if (geminiResponse.status === 429) {
+        errorMessage = 'Límite de tasa excedido. Has alcanzado el límite de solicitudes de Gemini.';
+      } else if (geminiResponse.status === 500) {
+        errorMessage = 'Error del servidor de Gemini. Intenta de nuevo en unos momentos.';
       }
       
       return c.json({ 
-        error: `Error de OpenAI: ${errorMessage}` 
-      }, openaiResponse.status);
+        error: `Error de Gemini: ${errorMessage}` 
+      }, geminiResponse.status);
     }
     
-    const result = await openaiResponse.json();
-    console.log('OpenAI response received successfully');
+    const result = await geminiResponse.json();
+    console.log('Gemini response received successfully');
     
-    const taskData = JSON.parse(result.choices[0].message.content);
+    if (!result.candidates || result.candidates.length === 0) {
+      console.error('Gemini response without candidates:', result);
+      return c.json({ error: 'Gemini no generó una respuesta válida' }, 500);
+    }
+    
+    const responseText = result.candidates[0].content.parts[0].text;
+    const taskData = JSON.parse(responseText);
     
     // Add metadata that only teacher sees
     taskData.metadata = {
@@ -964,7 +1170,7 @@ Formato JSON:
     };
     
     return c.json({ task: taskData });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error generating task with AI:', error);
     return c.json({ error: `Error del servidor: ${error.message}` }, 500);
   }
@@ -973,8 +1179,8 @@ Formato JSON:
 app.post("/make-server-05c2b65f/ai/generate-task-pdf", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const userData = await kv.get(`user:${user.id}`);
     if (userData?.role !== 'teacher') return c.json({ error: 'Teachers only' }, 403);
@@ -1037,8 +1243,8 @@ app.post("/make-server-05c2b65f/ai/generate-task-pdf", async (c) => {
 app.get("/make-server-05c2b65f/pdf-annotations/:assignmentId", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const assignmentId = c.req.param('assignmentId');
     const key = `pdf-annotations:${user.id}:${assignmentId}`;
@@ -1054,8 +1260,8 @@ app.get("/make-server-05c2b65f/pdf-annotations/:assignmentId", async (c) => {
 app.post("/make-server-05c2b65f/pdf-annotations/:assignmentId", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const assignmentId = c.req.param('assignmentId');
     const { annotations } = await c.req.json();
@@ -1073,8 +1279,8 @@ app.post("/make-server-05c2b65f/pdf-annotations/:assignmentId", async (c) => {
 app.post("/make-server-05c2b65f/pdf-submit/:assignmentId", async (c) => {
   try {
     const token = c.req.header('Authorization')?.split(' ')[1];
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return c.json({ error: 'Unauthorized' }, 401);
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) return c.json({ error: error || 'Unauthorized' }, 401);
     
     const assignmentId = c.req.param('assignmentId');
     
@@ -1160,6 +1366,165 @@ app.get("/make-server-05c2b65f/pdf-flattened/:submissionId", async (c) => {
   } catch (error) {
     console.error('Error getting flattened PDF:', error);
     return c.json({ error: 'Server error' }, 500);
+  }
+});
+
+// AI Question Generator endpoint
+app.post("/make-server-05c2b65f/ai/generate-questions", async (c) => {
+  try {
+    const token = c.req.header('Authorization')?.split(' ')[1];
+    const { user, error } = await authenticateUser(token);
+    if (error || !user) {
+      console.error('Auth error in question generation:', error);
+      return c.json({ error: error || 'Unauthorized' }, 401);
+    }
+    
+    const { text, maxQuestions = 20, includeCompletarBlancos = true } = await c.req.json();
+    
+    if (!text || text.trim().length < 50) {
+      return c.json({ error: 'El texto debe tener al menos 50 caracteres' }, 400);
+    }
+    
+    console.log('Generating questions with Gemini AI for text length:', text.length);
+    
+    // Get Gemini API key
+    const geminiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiKey) {
+      console.error('Gemini API key not configured');
+      return c.json({ error: 'La clave de API de Gemini no está configurada' }, 500);
+    }
+    
+    // Build the prompt for Gemini
+    const prompt = `Eres un asistente educativo experto especializado en generar preguntas de cuestionario.
+
+Analiza el siguiente texto y genera EXACTAMENTE ${maxQuestions} preguntas educativas de alta calidad.
+
+TEXTO A ANALIZAR:
+${text}
+
+INSTRUCCIONES:
+1. Genera preguntas variadas y educativas
+2. Incluye diferentes tipos de preguntas:
+   - Preguntas de definición (¿Qué es...?)
+   - Preguntas de propiedad (¿Qué tiene...?, ¿Qué contiene...?)
+   - Preguntas de ubicación (¿Dónde está...?)
+   - Preguntas temporales (¿Cuándo ocurrió...?)
+   - Preguntas de identificación (¿Cómo se llama...?)
+   ${includeCompletarBlancos ? '- Preguntas de completar blancos (Completa: ...)' : ''}
+3. Las preguntas deben ser claras, precisas y basadas directamente en el texto
+4. Las respuestas deben ser concisas pero completas
+5. Cada pregunta debe poder responderse con información del texto proporcionado
+
+FORMATO DE RESPUESTA (JSON estricto):
+{
+  "questions": [
+    {
+      "pregunta": "Texto de la pregunta",
+      "respuesta": "Respuesta correcta",
+      "tipo": "definicion|propiedad|ubicacion|temporal|completar|identificar"
+    }
+  ]
+}
+
+IMPORTANTE: 
+- Responde SOLO con el JSON, sin texto adicional
+- Genera exactamente ${maxQuestions} preguntas
+- Todas las preguntas deben estar en español
+- Asegúrate de que el JSON sea válido`;
+
+    // Call Gemini API
+    const geminiPayload = {
+      contents: [{
+        parts: [{
+          text: prompt
+        }]
+      }],
+      generationConfig: {
+        temperature: 0.7,
+        responseMimeType: 'application/json',
+        maxOutputTokens: 2048
+      }
+    };
+    
+    console.log('Calling Gemini API for question generation...');
+    
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(geminiPayload)
+      }
+    );
+    
+    if (!geminiResponse.ok) {
+      const errorData = await geminiResponse.json().catch(() => ({}));
+      console.error('Gemini API error:', { status: geminiResponse.status, error: errorData });
+      
+      let errorMessage = errorData.error?.message || geminiResponse.statusText || 'Error desconocido';
+      
+      if (geminiResponse.status === 401 || geminiResponse.status === 403) {
+        errorMessage = 'Clave de API de Gemini inválida. Verifica la configuración.';
+      } else if (geminiResponse.status === 429) {
+        errorMessage = 'Límite de solicitudes excedido. Intenta de nuevo en unos momentos.';
+      } else if (geminiResponse.status === 500) {
+        errorMessage = 'Error del servidor de Gemini. Intenta de nuevo más tarde.';
+      }
+      
+      return c.json({ 
+        error: `Error de Gemini AI: ${errorMessage}` 
+      }, geminiResponse.status);
+    }
+    
+    const result = await geminiResponse.json();
+    console.log('Gemini response received successfully for question generation');
+    
+    if (!result.candidates || result.candidates.length === 0) {
+      console.error('Gemini response without candidates:', result);
+      return c.json({ error: 'Gemini no generó una respuesta válida' }, 500);
+    }
+    
+    const responseText = result.candidates[0].content.parts[0].text;
+    
+    let questionData;
+    try {
+      questionData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Error parsing Gemini JSON response:', parseError);
+      console.error('Response text:', responseText);
+      return c.json({ error: 'Error al procesar la respuesta de Gemini' }, 500);
+    }
+    
+    if (!questionData.questions || !Array.isArray(questionData.questions)) {
+      console.error('Invalid question data structure:', questionData);
+      return c.json({ error: 'Respuesta de Gemini en formato incorrecto' }, 500);
+    }
+    
+    // Add unique IDs to each question
+    const questionsWithIds = questionData.questions.map((q: any, index: number) => ({
+      id: `q-${Date.now()}-${index}`,
+      pregunta: q.pregunta || '',
+      respuesta: q.respuesta || '',
+      tipo: q.tipo || 'identificar',
+      oracionOriginal: text.substring(0, 200) + '...' // Store excerpt for reference
+    }));
+    
+    console.log(`Generated ${questionsWithIds.length} questions successfully`);
+    
+    return c.json({ 
+      questions: questionsWithIds,
+      metadata: {
+        generatedBy: 'Gemini AI',
+        generatedAt: new Date().toISOString(),
+        textLength: text.length,
+        questionCount: questionsWithIds.length
+      }
+    });
+  } catch (error: any) {
+    console.error('Error in question generation:', error);
+    return c.json({ error: `Error del servidor: ${error.message}` }, 500);
   }
 });
 

@@ -1,0 +1,154 @@
+═══════════════════════════════════════════════════════════════════════════
+EJEMPLOS DE TEXTOS PARA EL GENERADOR DE PREGUNTAS
+═══════════════════════════════════════════════════════════════════════════
+
+Copia y pega estos textos en el generador para probar cómo funciona.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EJEMPLO 1: GEOGRAFÍA DE ESPAÑA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Madrid es la capital de España. El idioma oficial de España es el español. España tiene más de 47 millones de habitantes. Madrid se encuentra en el centro de la península ibérica. Barcelona está en la costa mediterránea. El río más largo de España se llama Tajo. España pertenece a la Unión Europea. La monarquía española fue restaurada en 1975. España tiene 17 comunidades autónomas. La superficie de España es de 505.990 kilómetros cuadrados.
+
+PREGUNTAS ESPERADAS: ~15-20
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EJEMPLO 2: HISTORIA - LA SEGUNDA GUERRA MUNDIAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La Segunda Guerra Mundial comenzó en 1939. Adolf Hitler fue el líder de Alemania durante la guerra. La guerra terminó en 1945. El Día D ocurrió en Normandía. Los Aliados fueron Estados Unidos, Reino Unido y la Unión Soviética. Pearl Harbor está en Hawái. El ataque a Pearl Harbor sucedió en 1941. Las bombas atómicas se lanzaron en Hiroshima y Nagasaki. La guerra tuvo lugar en Europa, África y Asia. Winston Churchill fue el primer ministro de Reino Unido.
+
+PREGUNTAS ESPERADAS: ~18-25
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EJEMPLO 3: CIENCIA - EL SISTEMA SOLAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+El Sol es una estrella. El Sistema Solar tiene ocho planetas. Mercurio es el planeta más cercano al Sol. Júpiter es el planeta más grande. La Tierra se encuentra en la zona habitable. Marte se llama el planeta rojo. Los anillos de Saturno son famosos. La Luna es el satélite natural de la Tierra. Plutón fue degradado en 2006. El Sistema Solar se formó hace 4.600 millones de años. Venus es el planeta más caliente. Neptuno es el planeta más alejado del Sol.
+
+PREGUNTAS ESPERADAS: ~20-25
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EJEMPLO 4: BIOLOGÍA - LA CÉLULA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La célula es la unidad básica de la vida. El ADN contiene información genética. Los cromosomas se encuentran en el núcleo celular. La fotosíntesis ocurre en las plantas. Las mitocondrias son las centrales energéticas de la célula. La membrana celular protege la célula. El agua está compuesta por hidrógeno y oxígeno. Las proteínas son fundamentales para la vida. La célula animal tiene diferencias con la célula vegetal. El citoplasma contiene orgánulos celulares.
+
+PREGUNTAS ESPERADAS: ~15-20
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EJEMPLO 5: LITERATURA - DON QUIJOTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Don Quijote fue escrito por Miguel de Cervantes. La obra se publicó en 1605. Don Quijote es un caballero andante. Sancho Panza es el escudero de Don Quijote. Dulcinea es el amor de Don Quijote. La obra tiene lugar en La Mancha. Los molinos de viento son famosos en la historia. Rocinante se llama el caballo de Don Quijote. La obra es considerada la primera novela moderna. Miguel de Cervantes nació en Alcalá de Henares.
+
+PREGUNTAS ESPERADAS: ~18-22
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EJEMPLO 6: MATEMÁTICAS - GEOMETRÍA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+El triángulo tiene tres lados. El círculo es una figura redonda. El cuadrado tiene cuatro lados iguales. Pi es aproximadamente 3.14159. Un ángulo recto mide 90 grados. El perímetro es la suma de todos los lados. El área se mide en unidades cuadradas. El diámetro es el doble del radio. La hipotenusa es el lado más largo del triángulo rectángulo. Los polígonos son figuras cerradas.
+
+PREGUNTAS ESPERADAS: ~15-18
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EJEMPLO 7: HISTORIA - EL IMPERIO ROMANO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Roma fue fundada en 753 a.C. Julio César fue un general romano famoso. El Imperio Romano se expandió por Europa, Asia y África. El Coliseo está en Roma. El latín era el idioma del Imperio Romano. La República Romana terminó en 27 a.C. Augusto fue el primer emperador romano. El Imperio Romano cayó en 476 d.C. Los romanos construyeron acueductos y calzadas. La Pax Romana duró aproximadamente 200 años.
+
+PREGUNTAS ESPERADAS: ~18-22
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EJEMPLO 8: FÍSICA - LAS LEYES DE NEWTON
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Isaac Newton formuló las leyes del movimiento. La primera ley se llama ley de inercia. Un objeto en reposo permanece en reposo. La fuerza es igual a masa por aceleración. La gravedad es una fuerza de atracción. La tercera ley establece acción y reacción. Newton nació en 1643. La manzana es famosa en la historia de Newton. Las leyes de Newton son fundamentales en física. La velocidad se mide en metros por segundo.
+
+PREGUNTAS ESPERADAS: ~15-20
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EJEMPLO 9: GEOGRAFÍA - AMÉRICA DEL SUR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+El río Amazonas es el más caudaloso del mundo. Brasil tiene la mayor parte de la selva amazónica. Machu Picchu está en Perú. Los Andes son la cordillera más larga del mundo. Buenos Aires es la capital de Argentina. Simón Bolívar fue el libertador de América del Sur. El idioma principal de Brasil es el portugués. La Patagonia se encuentra en el sur del continente. América del Sur tiene doce países independientes. El desierto de Atacama es el más árido del mundo.
+
+PREGUNTAS ESPERADAS: ~18-25
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EJEMPLO 10: TECNOLOGÍA - LA INTERNET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Internet es una red global de computadoras. Tim Berners-Lee inventó la World Wide Web. La WWW se creó en 1989. HTTP es el protocolo de transferencia de hipertexto. HTML es el lenguaje de marcado web. Google fue fundado en 1998. El correo electrónico revolucionó la comunicación. Los servidores almacenan sitios web. La fibra óptica permite conexiones rápidas. Las redes sociales conectan a miles de millones de personas.
+
+PREGUNTAS ESPERADAS: ~18-22
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EJEMPLO 11: ARTE - EL RENACIMIENTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+El Renacimiento comenzó en Italia. Leonardo da Vinci fue un genio renacentista. La Mona Lisa es su obra más famosa. Miguel Ángel pintó la Capilla Sixtina. La pintura renacentista se caracteriza por el realismo. Rafael fue otro gran artista del Renacimiento. El período duró aproximadamente del siglo XIV al XVI. Florencia fue el centro del Renacimiento. Los Médici fueron mecenas importantes. El Renacimiento significó el renacimiento del arte clásico.
+
+PREGUNTAS ESPERADAS: ~18-25
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EJEMPLO 12: QUÍMICA - LA TABLA PERIÓDICA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La tabla periódica organiza los elementos químicos. Dmitri Mendeléyev creó la primera tabla periódica. El hidrógeno es el elemento más ligero. El oro es un metal precioso. El oxígeno es esencial para la vida. Los elementos están ordenados por número atómico. Los metales se encuentran en el lado izquierdo de la tabla. Los gases nobles están en el grupo 18. El carbono es fundamental para la vida orgánica. La tabla tiene 118 elementos actualmente.
+
+PREGUNTAS ESPERADAS: ~18-22
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONSEJOS DE USO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. COPIA COMPLETO: Selecciona todo el texto de un ejemplo, incluyendo los puntos finales.
+
+2. PEGA EN EL GENERADOR: 
+   - Dashboard del profesor → "Generar Preguntas" → Pega el texto
+
+3. AJUSTA CONFIGURACIÓN:
+   - Activa "Incluir completar blancos" para más variedad
+   - Elige máximo de preguntas (20 es un buen punto medio)
+
+4. GENERA Y REVISA:
+   - Haz clic en "Generar Preguntas"
+   - Revisa las preguntas generadas
+   - Copia las que más te gusten
+   - Exporta en TXT o JSON según necesites
+
+5. USA EN CLASE:
+   - Imprime el TXT para distribuir
+   - Usa el JSON para integrar en otras herramientas
+   - Edita manualmente si necesitas ajustar algo
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NOTAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Todos estos textos generarán múltiples preguntas automáticamente
+- El número de preguntas depende de la estructura del texto
+- Textos con más definiciones y hechos → Más preguntas
+- Puedes combinar varios ejemplos para crear cuestionarios más largos
+- Edita los textos para adaptarlos a tu nivel educativo
+
+
+═══════════════════════════════════════════════════════════════════════════
+FIN DE LOS EJEMPLOS
+═══════════════════════════════════════════════════════════════════════════

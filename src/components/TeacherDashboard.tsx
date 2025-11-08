@@ -2,16 +2,16 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '../utils/api';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Plus, FileText, Users, BarChart3, LogOut, Video, Upload, Settings, Sun, Moon, Sparkles } from 'lucide-react';
 import { CreateAssignmentDialog } from './CreateAssignmentDialog';
-import { AITaskCreator } from './AITaskCreator';
 import { AssignmentCard } from './AssignmentCard';
 import { StudentsView } from './StudentsView';
 import { MyStudentsWithTasks } from './MyStudentsWithTasks';
 import { GradesView } from './GradesView';
 import { SettingsPanel } from './SettingsPanel';
 import { TeacherMaterialsView } from './TeacherMaterialsView';
+import { NavigationDropdown } from './NavigationDropdown';
+import { QuestionGeneratorDialog } from './QuestionGeneratorDialog';
 import { useTheme } from '../utils/ThemeContext';
 import { useLanguage } from '../utils/LanguageContext';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -26,7 +26,7 @@ export function TeacherDashboard({ user, onLogout, onUpdateProfile }: TeacherDas
   const [activeTab, setActiveTab] = useState('assignments');
   const [assignments, setAssignments] = useState<any[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isAICreatorOpen, setIsAICreatorOpen] = useState(false);
+  const [isQuestionGeneratorOpen, setIsQuestionGeneratorOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [userProfile, setUserProfile] = useState({
@@ -151,31 +151,20 @@ export function TeacherDashboard({ user, onLogout, onUpdateProfile }: TeacherDas
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="bg-card shadow-sm grid grid-cols-2 sm:grid-cols-4 w-full sm:w-auto">
-            <TabsTrigger value="assignments" className="gap-1 sm:gap-2 text-xs sm:text-sm">
-              <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">{t('assignments')}</span>
-              <span className="sm:hidden">Tareas</span>
-            </TabsTrigger>
-            <TabsTrigger value="materials" className="gap-1 sm:gap-2 text-xs sm:text-sm">
-              <Upload className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">{t('notes')}</span>
-              <span className="sm:hidden">Material</span>
-            </TabsTrigger>
-            <TabsTrigger value="my-students" className="gap-1 sm:gap-2 text-xs sm:text-sm">
-              <Users className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">{t('myStudents')}</span>
-              <span className="sm:hidden">Mis Est.</span>
-            </TabsTrigger>
-            <TabsTrigger value="grades" className="gap-1 sm:gap-2 text-xs sm:text-sm">
-              <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">{t('grades')}</span>
-              <span className="sm:hidden">Notas</span>
-            </TabsTrigger>
-          </TabsList>
+        <div className="space-y-6">
+          <NavigationDropdown
+            items={[
+              { value: 'assignments', label: t('assignments'), icon: FileText, mobileLabel: 'Tareas' },
+              { value: 'materials', label: t('notes'), icon: Upload, mobileLabel: 'Material' },
+              { value: 'my-students', label: t('myStudents'), icon: Users, mobileLabel: 'Mis Estudiantes' },
+              { value: 'grades', label: t('grades'), icon: BarChart3, mobileLabel: 'Notas' },
+            ]}
+            activeValue={activeTab}
+            onValueChange={setActiveTab}
+          />
 
-          <TabsContent value="assignments" className="space-y-6">
+          {activeTab === 'assignments' && (
+            <div className="space-y-6">
             {/* Stats Cards */}
             <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-6">
               <Card className="bg-gradient-to-br from-primary to-green-600 text-white">
@@ -224,12 +213,13 @@ export function TeacherDashboard({ user, onLogout, onUpdateProfile }: TeacherDas
               </div>
               <div className="flex gap-2">
                 <Button 
-                  onClick={() => setIsAICreatorOpen(true)} 
+                  onClick={() => setIsQuestionGeneratorOpen(true)} 
                   variant="outline"
-                  className="gap-2 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 border-purple-200 dark:border-purple-800 hover:from-purple-100 hover:to-blue-100 dark:hover:from-purple-900/40 dark:hover:to-blue-900/40"
+                  className="gap-2 border-lime-500/30 text-lime-600 hover:bg-lime-500/10"
                 >
-                  <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                  {t('createWithAI')}
+                  <Sparkles className="w-4 h-4" />
+                  <span className="hidden sm:inline">Generar Preguntas</span>
+                  <span className="sm:hidden">Preguntas</span>
                 </Button>
                 <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
                   <Plus className="w-4 h-4" />
@@ -292,20 +282,21 @@ export function TeacherDashboard({ user, onLogout, onUpdateProfile }: TeacherDas
                 ))}
               </div>
             )}
-          </TabsContent>
+            </div>
+          )}
 
-          <TabsContent value="materials">
+          {activeTab === 'materials' && (
             <TeacherMaterialsView />
-          </TabsContent>
+          )}
 
-          <TabsContent value="my-students">
+          {activeTab === 'my-students' && (
             <MyStudentsWithTasks />
-          </TabsContent>
+          )}
 
-          <TabsContent value="grades">
+          {activeTab === 'grades' && (
             <GradesView assignments={assignments} />
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </main>
 
       <CreateAssignmentDialog
@@ -314,17 +305,21 @@ export function TeacherDashboard({ user, onLogout, onUpdateProfile }: TeacherDas
         onSubmit={handleCreateAssignment}
       />
 
-      <AITaskCreator
-        open={isAICreatorOpen}
-        onOpenChange={setIsAICreatorOpen}
-        onTaskCreated={loadAssignments}
-      />
-
       <SettingsPanel
         open={isSettingsOpen}
         onOpenChange={setIsSettingsOpen}
         userProfile={userProfile}
         onUpdateProfile={handleProfileUpdate}
+      />
+
+      <QuestionGeneratorDialog
+        open={isQuestionGeneratorOpen}
+        onOpenChange={setIsQuestionGeneratorOpen}
+        onQuestionsGenerated={(questions) => {
+          console.log('Preguntas generadas:', questions);
+          // Aquí puedes hacer lo que quieras con las preguntas
+          // Por ejemplo, mostrarlas o usarlas para crear una tarea
+        }}
       />
     </div>
   );

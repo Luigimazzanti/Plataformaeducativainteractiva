@@ -258,11 +258,11 @@ export function TeacherMaterialsView() {
                   </p>
                 )}
                 
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1"
+                    className="flex-1 w-full sm:w-auto"
                     onClick={() => handleOpenAssignDialog(material)}
                   >
                     <Users className="w-4 h-4 mr-2" />
@@ -271,6 +271,7 @@ export function TeacherMaterialsView() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="w-full sm:w-auto"
                     onClick={() => window.open(material.fileUrl, '_blank')}
                   >
                     {t('viewDetails')}
@@ -278,6 +279,7 @@ export function TeacherMaterialsView() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="w-full sm:w-auto"
                     onClick={() => handleDeleteMaterial(material.id)}
                   >
                     <Trash2 className="w-4 h-4" />

@@ -1,0 +1,210 @@
+═══════════════════════════════════════════════════════════════════════════
+                        🎯 3 PASOS CRÍTICOS
+         Para Solucionar el Error del Generador IA de Gemini
+═══════════════════════════════════════════════════════════════════════════
+
+
+⚠️  TU PROBLEMA ACTUAL:
+───────────────────────
+
+Cuando creas "index.ts" en Supabase Dashboard y haces Deploy,
+el archivo DESAPARECE.
+
+¿POR QUÉ? Porque todavía existe "index.tsx" y Supabase elimina 
+el archivo nuevo para evitar conflictos.
+
+
+✅  LA SOLUCIÓN:
+────────────────
+
+NO crear archivo nuevo.
+EN SU LUGAR: REEMPLAZAR el archivo viejo.
+
+
+═══════════════════════════════════════════════════════════════════════════
+                            PASO 1 DE 3
+                         📋 ABRIR ARCHIVO
+═══════════════════════════════════════════════════════════════════════════
+
+1. Ve a: https://supabase.com/dashboard
+2. Login → Proyecto: ldhimtgexjbmwobkmcwr
+3. Sidebar → "Edge Functions"
+4. Click en función "server"
+5. Click en archivo "index.tsx" (para ABRIRLO)
+
+🎯 OBJETIVO: Abrir el archivo existente, NO crear uno nuevo
+
+
+═══════════════════════════════════════════════════════════════════════════
+                            PASO 2 DE 3
+                    ✏️  RENOMBRAR O REEMPLAZAR
+═══════════════════════════════════════════════════════════════════════════
+
+OPCIÓN A: Renombrar (si el Dashboard lo permite)
+─────────────────────────────────────────────────
+
+Con el archivo "index.tsx" ABIERTO:
+
+1. En la parte superior, verás el nombre: "index.tsx"
+2. Click en el NOMBRE del archivo (debe volverse editable)
+3. Cambia: index.tsx  →  index.ts  (elimina la "x")
+4. Presiona ENTER
+5. Click "Save" o Ctrl+S / Cmd+S
+
+
+OPCIÓN B: Eliminar y Recrear (si no puedes renombrar)
+──────────────────────────────────────────────────────
+
+1. Con "index.tsx" abierto:
+   - Selecciona TODO: Ctrl+A / Cmd+A
+   - Copia: Ctrl+C / Cmd+C
+   - Guarda en Notepad/TextEdit (SEGURIDAD)
+
+2. Vuelve a la lista de archivos (<- o Back)
+
+3. Encuentra "index.tsx"
+   - Click en icono 🗑️ o "..." → Delete
+   - Confirma eliminación
+
+4. Ahora crea archivo NUEVO:
+   - Click "Add file" o "+"
+   - Nombre: index.ts  (sin "x")
+   - Pega el contenido: Ctrl+V / Cmd+V
+   - Save
+
+🎯 OBJETIVO: Solo debe existir index.ts (NO index.tsx)
+
+
+═══════════════════════════════════════════════════════════════════════════
+                            PASO 3 DE 3
+                        🚀 DEPLOY Y VERIFICAR
+═══════════════════════════════════════════════════════════════════════════
+
+1. Click en botón "Deploy" (esquina superior derecha)
+
+2. Espera el mensaje:
+   ✅ "Deployment successful"
+   o
+   ✅ "Function deployed successfully"
+
+3. Verifica estructura de archivos:
+   ✅ index.ts       ← Debe existir (sin "x")
+   ✅ kv_store.ts
+   ❌ index.tsx      ← NO debe existir
+
+4. Test rápido (abre terminal o navegador):
+
+   curl https://ldhimtgexjbmwobkmcwr.supabase.co/functions/v1/server/make-server-05c2b65f/health
+
+   Debe devolver: {"status":"ok"}
+
+5. Test desde la app:
+   - Login: teacher@demo.com / demo123
+   - Crear Tarea → Generador IA (⚡)
+   - Pegar texto y "Generar Preguntas"
+   - Debe funcionar en 3-5 segundos ✅
+
+🎯 OBJETIVO: Health check OK + Generador IA funciona
+
+
+═══════════════════════════════════════════════════════════════════════════
+                         ✅ RESULTADO FINAL
+═══════════════════════════════════════════════════════════════════════════
+
+ANTES:
+   📄 index.tsx  ❌  → Error 504 timeout (150 segundos)
+
+DESPUÉS:
+   📄 index.ts   ✅  → Success 200 (3-5 segundos)
+
+
+═══════════════════════════════════════════════════════════════════════════
+                        🚨 ERRORES COMUNES
+═══════════════════════════════════════════════════════════════════════════
+
+❌ Error: "index.ts sigue desapareciendo"
+   → Verifica que eliminaste index.tsx PRIMERO
+   → Lista TODOS los archivos en el Dashboard
+   → Solo debe existir index.ts
+
+
+❌ Error: "Cannot find module"
+   → Asegúrate de que kv_store.ts existe
+   → Debe estar en el MISMO directorio que index.ts
+   → NO debe estar en subcarpeta
+
+
+❌ Error: "Deployment failed"
+   → Abre los logs (botón "Logs" en el Dashboard)
+   → Lee el error específico
+   → Verifica que el archivo tiene contenido (no está vacío)
+
+
+═══════════════════════════════════════════════════════════════════════════
+                      📚 DOCUMENTACIÓN ADICIONAL
+═══════════════════════════════════════════════════════════════════════════
+
+Si necesitas más ayuda, lee estos archivos:
+
+📄 INSTRUCCIONES_VISUALES_DASHBOARD.txt  → Paso a paso con más detalles
+📄 SOLUCION_DASHBOARD_SUPABASE.md        → Explicación completa
+📄 POR_QUE_DESAPARECE_INDEX_TS.md        → Explicación técnica
+📄 CHECKLIST_POST_FIX.md                 → Verificación completa
+
+
+═══════════════════════════════════════════════════════════════════════════
+                          🎉 ¡IMPORTANTE!
+═══════════════════════════════════════════════════════════════════════════
+
+Una vez completados los 3 pasos:
+
+✅ El generador IA funcionará PERFECTAMENTE
+✅ No más errores 504 timeout
+✅ No más errores 401 unauthorized  
+✅ Respuestas en 3-5 segundos (en lugar de 150s)
+✅ Generación automática de 10-20 preguntas con IA
+
+
+═══════════════════════════════════════════════════════════════════════════
+                           TIEMPO TOTAL
+═══════════════════════════════════════════════════════════════════════════
+
+⏱️  Paso 1: 30 segundos (abrir archivo)
+⏱️  Paso 2: 60 segundos (renombrar o reemplazar)
+⏱️  Paso 3: 30 segundos (deploy y verificar)
+
+📊 TOTAL: ~2 minutos
+
+
+═══════════════════════════════════════════════════════════════════════════
+                     ¿SIGUES TENIENDO PROBLEMAS?
+═══════════════════════════════════════════════════════════════════════════
+
+Si después de seguir estos 3 pasos el problema persiste:
+
+1. Toma screenshot del Dashboard mostrando los archivos
+2. Toma screenshot del error que aparece
+3. Copia los logs del deploy (botón "Logs")
+4. Comparte esta información para ayuda adicional
+
+
+═══════════════════════════════════════════════════════════════════════════
+                            RESUMEN VISUAL
+═══════════════════════════════════════════════════════════════════════════
+
+    PASO 1              PASO 2              PASO 3
+    ───────             ───────             ───────
+    
+    📂 Abrir            ✏️  Renombrar        🚀 Deploy
+    index.tsx           .tsx → .ts          + Verificar
+       │                    │                    │
+       │                    │                    │
+       ▼                    ▼                    ▼
+    [Editor]            [index.ts]          [Health ✅]
+                        (sin "x")           [App ✅]
+
+
+═══════════════════════════════════════════════════════════════════════════
+
+Última actualización: Sábado, 8 de noviembre de 2025
+Versión: 1.0

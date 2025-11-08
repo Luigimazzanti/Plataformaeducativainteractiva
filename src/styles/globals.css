@@ -1,3 +1,10 @@
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * EDUCONNECT - GLOBAL STYLES - BUILD V9.0.0-NUCLEAR
+ * Cache Buster: NUCLEAR_V9_20241107_165403
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -239,4 +246,14 @@
 
 html {
   font-size: var(--font-size);
+}
+
+/* Hide scrollbar for horizontal scroll areas */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }

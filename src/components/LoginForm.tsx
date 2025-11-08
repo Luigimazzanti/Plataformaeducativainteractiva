@@ -1,6 +1,12 @@
+/*
+ * ╔═══════════════════════════════════════════════════════════════════════╗
+ * ║  LOGIN FORM - RECOMPILACION NUCLEAR V9                                ║
+ * ║  SIN SUPABASE CLIENT - SOLO BACKEND API                               ║
+ * ╚═══════════════════════════════════════════════════════════════════════╝
+ */
 import { useState } from 'react';
-import { createClient } from '../utils/supabase/client';
 import { apiClient } from '../utils/api';
+import { AuthManager } from '../utils/auth-manager';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -19,6 +25,7 @@ interface LoginFormProps {
 export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
   const { t, language, setLanguage } = useLanguage();
   
   // Login state
@@ -30,8 +37,6 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupName, setSignupName] = useState('');
   const [signupRole, setSignupRole] = useState<'teacher' | 'student'>('student');
-
-  const supabase = createClient();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,37 +53,91 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
           name: 'Administrator',
           role: 'admin',
         };
+        // Guardar token usando AuthManager
+        AuthManager.saveToken(adminToken);
+        AuthManager.saveUserId(adminUser.id);
         apiClient.setToken(adminToken);
+        console.log('[Login] ✅ Admin autenticado con token guardado');
         onLoginSuccess(adminUser);
         return;
       }
 
-      // If in demo mode, use demo API directly
+      // Check if demo mode is already active - if so, skip backend attempt for faster login
       if (isDemoMode()) {
-        const { user, token } = await demoModeAPI.login(loginEmail, loginPassword);
-        demoModeAPI.setCurrentUser(user.id);
-        apiClient.setToken(token);
-        onLoginSuccess(user);
-        return;
+        console.log('[Login] ⚡ Modo demo ya activo, login rápido...');
+        try {
+          const { user, token } = await demoModeAPI.login(loginEmail, loginPassword);
+          AuthManager.saveToken(token);
+          AuthManager.saveUserId(user.id);
+          apiClient.setToken(token);
+          console.log('[Login] ✅ Login demo completado (sin espera de backend)');
+          onLoginSuccess(user);
+          return;
+        } catch (demoErr: any) {
+          console.error('Demo login error:', demoErr);
+          setError('❌ ' + demoErr.message);
+          setIsLoading(false);
+          return;
+        }
       }
 
-      // Try Supabase login
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
-        password: loginPassword,
-      });
+      // Clear demo mode flag to try backend first
+      localStorage.removeItem('educonnect_demo_mode');
 
-      if (signInError) throw signInError;
-
-      if (data.session?.access_token) {
-        apiClient.setToken(data.session.access_token);
-        const { user } = await apiClient.getCurrentUser();
-        onLoginSuccess(user);
-      }
+      // Try login through backend API (which handles both real auth and demo credentials)
+      const { user, token } = await apiClient.login(loginEmail, loginPassword);
+      console.log('[Login] ✅ Usuario autenticado con backend');
+      
+      // Guardar token usando AuthManager
+      AuthManager.saveToken(token);
+      AuthManager.saveUserId(user.id);
+      apiClient.setToken(token);
+      
+      // Store current user for demo credentials detection
+      localStorage.setItem('educonnect_current_user', user.id);
+      
+      onLoginSuccess(user);
     } catch (err: any) {
       console.error('Login error:', err);
-      const errorMsg = err.message || t('loginError');
-      setError(errorMsg === 'Usuario no encontrado' ? 'Credenciales incorrectas. Usa las credenciales de prueba mostradas arriba.' : errorMsg);
+      
+      // If it's a network error or demo mode error, try demo mode directly
+      if (err.message === 'DEMO_MODE' || err.message.includes('Failed to fetch')) {
+        console.log('[Login] 🔧 Backend no disponible, activando modo demo...');
+        
+        // Enable demo mode
+        localStorage.setItem('educonnect_demo_mode', 'true');
+        
+        // Try demo mode login
+        try {
+          const { user, token } = await demoModeAPI.login(loginEmail, loginPassword);
+          AuthManager.saveToken(token);
+          AuthManager.saveUserId(user.id);
+          apiClient.setToken(token);
+          console.log('[Login] ✅ Modo demo activado, usuario autenticado');
+          
+          onLoginSuccess(user);
+          return;
+        } catch (demoErr: any) {
+          console.error('Demo login error:', demoErr);
+          setError('❌ ' + demoErr.message);
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      // Provide user-friendly error messages
+      let errorMsg = err.message || t('loginError');
+      
+      if (errorMsg.includes('Invalid login credentials') || 
+          errorMsg.includes('Email not confirmed') ||
+          errorMsg === 'Usuario no encontrado' ||
+          errorMsg === 'Credenciales incorrectas') {
+        errorMsg = '❌ Credenciales incorrectas. Por favor verifica tu email y contraseña. Si no tienes cuenta, créala en la pestaña "Registrarse".';
+      } else if (errorMsg.includes('Email not found') || errorMsg.includes('User not found')) {
+        errorMsg = '⚠️ Email no registrado. ¿Quieres crear una cuenta? Ve a la pestaña "Registrarse".';
+      }
+      
+      setError(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -90,37 +149,47 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
     setError('');
 
     try {
-      const { user } = await apiClient.signup({
+      // Clear any previous demo mode flag to allow backend features
+      localStorage.removeItem('educonnect_demo_mode');
+      
+      const { user, token } = await apiClient.signup({
         email: signupEmail,
         password: signupPassword,
         name: signupName,
         role: signupRole,
       });
 
-      // If in demo mode, user is already created
-      if (isDemoMode()) {
-        demoModeAPI.setCurrentUser(user.id);
-        apiClient.setToken(`demo_token_${user.id}`);
-        onLoginSuccess(user);
-        return;
-      }
-
-      // Try to login with Supabase
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: signupEmail,
-        password: signupPassword,
-      });
-
-      if (signInError) throw signInError;
-
-      if (data.session?.access_token) {
-        apiClient.setToken(data.session.access_token);
-        const { user: userData } = await apiClient.getCurrentUser();
-        onLoginSuccess(userData);
-      }
+      // Guardar token usando AuthManager
+      AuthManager.saveToken(token);
+      AuthManager.saveUserId(user.id);
+      apiClient.setToken(token);
+      
+      console.log('[Signup] ✅ Usuario registrado y autenticado, token guardado');
+      onLoginSuccess(user);
     } catch (err: any) {
       console.error('Signup error:', err);
-      setError(err.message || t('signupError'));
+      
+      // Provide user-friendly error messages
+      let errorMsg = err.message || t('signupError');
+      
+      if (errorMsg.includes('already been registered') || 
+          errorMsg.includes('User already registered') ||
+          errorMsg.includes('duplicate key')) {
+        errorMsg = '⚠️ Este email ya está registrado. Cambiando a la pestaña "Iniciar sesión"...';
+        // Switch to login tab and pre-fill email
+        setTimeout(() => {
+          setActiveTab('login');
+          setLoginEmail(signupEmail);
+          setLoginPassword('');
+          setError('Ya tienes una cuenta. Por favor ingresa tu contraseña para acceder.');
+        }, 2000);
+      } else if (errorMsg.includes('Password should be')) {
+        errorMsg = 'La contraseña debe tener al menos 6 caracteres.';
+      } else if (errorMsg.includes('Invalid email')) {
+        errorMsg = 'Por favor ingresa un email válido.';
+      }
+      
+      setError(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -146,18 +215,15 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
         <Card className="shadow-xl">
         <CardHeader className="text-center">
           <div className="relative mb-4">
-            {/* Language Switcher - Positioned absolutely to not affect logo */}
-            <div className="absolute top-0 right-0">
+            {/* Language Switcher - Compact and positioned top-right */}
+            <div className="absolute -top-2 right-0 z-10">
               <Select value={language} onValueChange={(v) => setLanguage(v as Language)}>
-                <SelectTrigger className="w-[120px] sm:w-[140px] h-9">
+                <SelectTrigger className="w-[70px] h-8 border-none shadow-none hover:bg-accent/50 transition-colors px-2">
                   <SelectValue>
-                    <div className="flex items-center gap-1 sm:gap-2">
-                      <Globe className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span className="text-base sm:text-lg">{getLanguageFlag(language)}</span>
-                    </div>
+                    <span className="text-xl">{getLanguageFlag(language)}</span>
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent align="end" className="min-w-[150px]">
                   {Object.entries(languageNames).map(([code, name]) => (
                     <SelectItem key={code} value={code}>
                       <div className="flex items-center gap-2">
@@ -182,7 +248,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
           <CardDescription className="text-sm sm:text-base">{t('welcomeMessage')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login" className="w-full">
+          <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as 'login' | 'signup'); setError(''); }} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">{t('login')}</TabsTrigger>
               <TabsTrigger value="signup">{t('signup')}</TabsTrigger>
@@ -193,14 +259,14 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                 <BookOpen className="h-4 w-4 text-lime-600 dark:text-lime-400" />
                 <AlertDescription className="text-xs text-lime-800 dark:text-lime-300">
                   <div className="space-y-1">
-                    <p className="font-semibold mb-2">Cuentas de prueba:</p>
-                    <div className="space-y-1">
+                    <p className="font-semibold mb-2">✨ Cuentas de prueba:</p>
+                    <div className="space-y-1 text-[11px]">
                       <div><strong>Admin:</strong> admin / EduConnect@Admin2024</div>
                       <div><strong>Profesor:</strong> teacher@demo.com / demo123</div>
                       <div><strong>Estudiante:</strong> student@demo.com / demo123</div>
                     </div>
-                    <p className="mt-2 text-muted-foreground italic text-[11px]">
-                      O crea una nueva cuenta en la pestaña "Registro"
+                    <p className="mt-2 text-muted-foreground italic text-[10px]">
+                      💡 Usa estas credenciales para probar la plataforma.
                     </p>
                   </div>
                 </AlertDescription>

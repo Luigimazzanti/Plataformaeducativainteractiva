@@ -1,0 +1,174 @@
+═══════════════════════════════════════════════════════════════════════════
+🚨 SOLUCIÓN INMEDIATA - ERROR IA GENERADOR DE PREGUNTAS
+═══════════════════════════════════════════════════════════════════════════
+
+PROBLEMA:
+--------
+- Error 401: "Missing authorization header"
+- Error 504: Timeout en peticiones OPTIONS (150 segundos)
+- El generador de preguntas con IA de Gemini NO funciona
+
+CAUSA RAÍZ:
+-----------
+El archivo principal del servidor está en formato .TSX cuando Supabase Edge Functions 
+SOLO acepta archivos .TS (TypeScript puro, NO React TypeScript)
+
+Archivo actual:  /supabase/functions/server/index.tsx ❌
+Debe ser:        /supabase/functions/server/index.ts  ✅
+
+═══════════════════════════════════════════════════════════════════════════
+SOLUCIÓN - 3 PASOS SIMPLES
+═══════════════════════════════════════════════════════════════════════════
+
+PASO 1: Descargar el archivo actual
+------------------------------------
+1. Ve a: Supabase Dashboard → Edge Functions → server
+2. Abre el archivo "index.tsx" en el editor
+3. Selecciona TODO el contenido (Ctrl+A / Cmd+A)
+4. Copia el contenido completo
+
+PASO 2: Renombrar a .ts
+------------------------
+En el Supabase Dashboard:
+1. ELIMINA el archivo "index.tsx" (botón papelera)
+2. CREA un nuevo archivo llamado "index.ts" (no .tsx, sino .ts)
+3. PEGA el contenido que copiaste en el Paso 1
+4. GUARDA el archivo
+
+PASO 3: Redesplegar la función
+-------------------------------
+1. En Supabase Dashboard → Edge Functions → server
+2. Click en botón "Deploy" o "Redeploy"
+3. Espera confirmación "Deployment successful"
+
+═══════════════════════════════════════════════════════════════════════════
+VERIFICACIÓN
+═══════════════════════════════════════════════════════════════════════════
+
+Test 1: Health Check
+---------------------
+curl https://ldhimtgexjbmwobkmcwr.supabase.co/functions/v1/server/make-server-05c2b65f/health
+
+Debe devolver: {"status":"ok"}
+
+
+Test 2: Generador IA desde la aplicación
+-----------------------------------------
+1. Login: teacher@demo.com / demo123
+2. Ir a "Crear Tarea"
+3. Click en "Generador de Preguntas con IA" (botón con ícono ⚡)
+4. Pegar este texto de prueba:
+
+   "La fotosíntesis es el proceso mediante el cual las plantas convierten 
+    la luz solar en energía química. Este proceso ocurre en los cloroplastos, 
+    que contienen clorofila, el pigmento que da a las plantas su color verde."
+
+5. Click en "Generar Preguntas"
+6. Debe aparecer: "✨ X preguntas generadas con IA de Gemini"
+
+
+Test 3: Verificar logs (opcional)
+----------------------------------
+Supabase Dashboard → Edge Functions → server → Logs
+
+No debe haber errores de "504 timeout" ni "403 forbidden"
+
+═══════════════════════════════════════════════════════════════════════════
+¿POR QUÉ ESTO SOLUCIONA EL PROBLEMA?
+═══════════════════════════════════════════════════════════════════════════
+
+Deno (runtime de Supabase Edge Functions) espera:
+✅ Archivos .ts  → TypeScript puro (variables, funciones, tipos)
+✅ Archivos .js  → JavaScript plano
+
+❌ Archivos .tsx → React TypeScript (componentes JSX)
+   → NO FUNCIONAN en Deno/Edge Functions
+   → Causan errores 504 timeout en despliegue
+   → Las peticiones OPTIONS (CORS preflight) nunca responden
+
+Cuando el archivo es .tsx:
+- El servidor NO se despliega correctamente
+- Las peticiones hacen timeout después de 150 segundos
+- El error 401 aparece porque el servidor mal desplegado no procesa headers
+
+Cuando el archivo es .ts:
+- El servidor se despliega correctamente
+- CORS funciona (peticiones OPTIONS responden en < 1 segundo)
+- Autenticación funciona (headers de Authorization se procesan)
+- IA de Gemini funciona (endpoint /ai/generate-questions responde correctamente)
+
+═══════════════════════════════════════════════════════════════════════════
+ARCHIVOS CORRECTOS EN /supabase/functions/server/
+═══════════════════════════════════════════════════════════════════════════
+
+✅ index.ts       → Servidor principal (Hono + todos los endpoints)
+✅ kv_store.ts    → Utilidades para KV store de Supabase
+⚠️  kv_store.tsx  → (ignorar, el .ts es el que se usa)
+
+El archivo kv_store.tsx está protegido por el sistema, pero no afecta porque
+el import usa "./kv_store.ts" explícitamente.
+
+═══════════════════════════════════════════════════════════════════════════
+VARIABLES DE ENTORNO REQUERIDAS
+═══════════════════════════════════════════════════════════════════════════
+
+Verifica en Supabase Dashboard → Settings → Edge Functions → Secrets:
+
+✅ GEMINI_API_KEY      → Tu clave de Google Gemini API
+✅ SB_URL              → URL de tu proyecto Supabase  
+✅ SB_SERVICE_KEY      → Service Role Key de Supabase
+
+Si falta alguna, añádela desde el Dashboard.
+
+═══════════════════════════════════════════════════════════════════════════
+SI USAS SUPABASE CLI (opcional)
+═══════════════════════════════════════════════════════════════════════════
+
+Si prefieres desplegar desde terminal:
+
+1. Asegúrate de tener el archivo renombrado a .ts
+2. Ejecuta:
+   
+   supabase functions deploy server --project-ref ldhimtgexjbmwobkmcwr
+
+3. Espera el mensaje "Deployed function server"
+
+═══════════════════════════════════════════════════════════════════════════
+CONTACTO EN CASO DE PROBLEMAS
+═══════════════════════════════════════════════════════════════════════════
+
+Si después de seguir estos pasos el generador IA sigue sin funcionar:
+
+1. Verifica los logs en Dashboard → Edge Functions → server → Logs
+2. Busca errores relacionados con:
+   - "GEMINI_API_KEY" → Verifica la clave en Secrets
+   - "fetch" o "TypeError" → Verifica que el archivo sea .ts (no .tsx)
+   - "CORS" → Verifica que el despliegue fue exitoso
+
+3. Prueba el endpoint directamente con curl:
+
+curl -X POST \
+  https://ldhimtgexjbmwobkmcwr.supabase.co/functions/v1/server/make-server-05c2b65f/ai/generate-questions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer demo_token_demo-teacher-1" \
+  -d '{
+    "text": "La fotosíntesis es el proceso de las plantas.",
+    "maxQuestions": 5,
+    "includeCompletarBlancos": true
+  }'
+
+Debe devolver un JSON con un array "questions".
+
+═══════════════════════════════════════════════════════════════════════════
+RESUMEN
+═══════════════════════════════════════════════════════════════════════════
+
+✅ Renombrar: index.tsx → index.ts
+✅ Redesplegar la Edge Function
+✅ Verificar que el health check funciona
+✅ Probar el generador de preguntas IA desde la app
+
+Después de estos pasos, el generador de preguntas con IA de Gemini 
+funcionará correctamente.
+
+═══════════════════════════════════════════════════════════════════════════

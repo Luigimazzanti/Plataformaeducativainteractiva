@@ -1,0 +1,40 @@
+EduConnect v10.0.0 - Generador de Preguntas con IA de Gemini
+
+NUEVO EN ESTA VERSIÓN:
+✨ Generador de Preguntas ahora usa IA de Google Gemini
+🤖 Preguntas educativas de alta calidad generadas automáticamente
+⚡ Análisis inteligente del contexto del texto
+🎯 Preguntas variadas y relevantes adaptadas al contenido
+📚 Reemplaza el sistema anterior de reglas programáticas
+
+FECHA: 7 de Noviembre, 2025
+ESTADO: Producción ✅
+
+CAMBIOS PRINCIPALES:
+- Nuevo endpoint backend: /ai/generate-questions
+- Integración completa con Gemini 1.5 Flash
+- UI mejorada con indicadores de IA
+- Manejo robusto de errores de API
+- Validación de texto mínimo (50 caracteres)
+- Toast notifications mejoradas
+- Documentación completa
+
+CARACTERÍSTICAS ACTIVAS:
+✅ Login con roles (profesor/estudiante/admin)
+✅ Sistema completo de tareas y calificaciones
+✅ Subida de archivos y materiales
+✅ Generador de preguntas con IA de Gemini ⭐ NUEVO
+✅ Formularios personalizados interactivos
+✅ Modo día/noche
+✅ Multilingüe (5 idiomas)
+✅ Avatares personalizables
+✅ Panel de administración completo
+✅ Modo demo optimizado (55% más rápido)
+
+CUENTAS DE PRUEBA:
+- teacher@demo.com / demo123
+- student@demo.com / demo123
+- admin / EduConnect@Admin2024
+
+BUILD: 10.0.0
+ÚLTIMA ACTUALIZACIÓN: 2025-11-07T10:45:00Z

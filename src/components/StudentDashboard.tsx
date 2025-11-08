@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '../utils/api';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { BookOpen, FileText, Award, LogOut, Clock, Settings, Sun, Moon, Book } from 'lucide-react';
 import { AssignmentCard } from './AssignmentCard';
 import { MySubmissionsView } from './MySubmissionsView';
 import { StudentMaterialsView } from './StudentMaterialsView';
+import { NavigationDropdown } from './NavigationDropdown';
 import { SettingsPanel } from './SettingsPanel';
 import { useTheme } from '../utils/ThemeContext';
 import { useLanguage } from '../utils/LanguageContext';
@@ -172,23 +172,19 @@ export function StudentDashboard({ user, onLogout, onUpdateProfile }: StudentDas
           </Card>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="bg-card shadow-sm grid grid-cols-3 w-full sm:w-auto">
-            <TabsTrigger value="assignments" className="gap-1 sm:gap-2 text-xs sm:text-sm">
-              <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="truncate">{t('assignments')}</span>
-            </TabsTrigger>
-            <TabsTrigger value="materials" className="gap-1 sm:gap-2 text-xs sm:text-sm">
-              <Book className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="truncate">{t('notes')}</span>
-            </TabsTrigger>
-            <TabsTrigger value="submissions" className="gap-1 sm:gap-2 text-xs sm:text-sm">
-              <Award className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="truncate">{t('submissions')}</span>
-            </TabsTrigger>
-          </TabsList>
+        <div className="space-y-6">
+          <NavigationDropdown
+            items={[
+              { value: 'assignments', label: t('assignments'), icon: FileText, mobileLabel: 'Tareas' },
+              { value: 'materials', label: t('notes'), icon: Book, mobileLabel: 'Material' },
+              { value: 'submissions', label: t('submissions'), icon: Award, mobileLabel: 'Entregas' },
+            ]}
+            activeValue={activeTab}
+            onValueChange={setActiveTab}
+          />
 
-          <TabsContent value="assignments" className="space-y-6">
+          {activeTab === 'assignments' && (
+            <div className="space-y-6">
             <div className="min-w-0">
               <h2 className="text-xl sm:text-2xl mb-2 truncate">{t('assignments')}</h2>
               <p className="text-muted-foreground text-sm truncate">{t('manageTasks')}</p>
@@ -226,16 +222,21 @@ export function StudentDashboard({ user, onLogout, onUpdateProfile }: StudentDas
                 ))}
               </div>
             )}
-          </TabsContent>
+            </div>
+          )}
 
-          <TabsContent value="submissions">
+          {activeTab === 'materials' && (
+            <StudentMaterialsView />
+          )}
+
+          {activeTab === 'submissions' && (
             <MySubmissionsView 
               submissions={submissions} 
               assignments={assignments}
               onRefresh={loadData}
             />
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </main>
 
       <SettingsPanel

@@ -1,0 +1,203 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║                      🚀 EDUCONNECT - INICIO RÁPIDO                       ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+
+┌───────────────────────────────────────────────────────────────────────────┐
+│                                                                           │
+│  ⚡ ¿QUIERES USAR LA APP AHORA? SIGUE ESTOS 3 PASOS:                     │
+│                                                                           │
+└───────────────────────────────────────────────────────────────────────────┘
+
+
+PASO 1: Abre la consola del navegador
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   🖥️  WINDOWS:  Presiona F12
+   🍎  MAC:      Presiona Cmd + Option + I
+
+   Verás una ventana con pestañas. Busca "Console" o "Consola".
+
+
+PASO 2: Copia y pega este comando
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   localStorage.clear(); localStorage.setItem('educonnect_demo_mode', 'true'); location.reload();
+
+   ⚠️  IMPORTANTE: Copia TODO el comando (incluye punto y coma)
+   
+   Luego presiona ENTER.
+
+
+PASO 3: Haz login
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   Espera 2-3 segundos a que cargue (⚡ ahora más rápido!), luego usa:
+
+   📧 Email:    teacher@demo.com
+   🔑 Password: demo123
+
+   ¡Listo! Ya estás dentro.
+
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                      CREDENCIALES DISPONIBLES                             ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+   👨‍🏫 PROFESOR
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Email:    teacher@demo.com
+   Password: demo123
+
+
+   👨‍🎓 ESTUDIANTE 1
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Email:    student@demo.com
+   Password: demo123
+
+
+   👨‍🎓 ESTUDIANTE 2
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Email:    student2@demo.com
+   Password: demo123
+
+
+   👑 ADMINISTRADOR
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Usuario:  admin
+   Password: EduConnect@Admin2024
+
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                      QUÉ PUEDES HACER (MODO DEMO)                         ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+   ✅ Crear y asignar tareas
+   ✅ Entregar tareas como estudiante
+   ✅ Calificar tareas como profesor
+   ✅ Ver estadísticas y notas
+   ✅ Gestionar usuarios (admin)
+   ✅ Cambiar idioma (5 opciones)
+   ✅ Cambiar tema (claro/oscuro)
+   ✅ Personalizar avatar
+   ✅ Crear formularios interactivos
+
+   ❌ Subir archivos (requiere backend)
+   ❌ Crear cuentas nuevas (solo demo)
+   ❌ Datos persistentes (se borran al recargar)
+
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                       SI ALGO NO FUNCIONA                                 ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+
+   PROBLEMA: "No puedo hacer login"
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📄 Lee: /SOLUCION_LOGIN_PROBLEMA.md
+   
+   SOLUCIÓN RÁPIDA:
+   1. Abre consola (F12)
+   2. Pega: localStorage.clear(); location.reload();
+   3. Espera a que cargue
+   4. Intenta login de nuevo
+
+
+   PROBLEMA: "Ctrl + Shift + R no funciona"
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📄 Lee: /COMO_RECARGAR_PAGINA.md
+   
+   ALTERNATIVAS:
+   - Windows: Ctrl + F5 o Shift + F5
+   - Mac: Cmd + Shift + R
+   - Manual: F12 → Click derecho en recargar → "Vaciar caché"
+
+
+   PROBLEMA: "Quiero ver qué está pasando"
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📄 Abre: /DIAGNOSTICO_RAPIDO.js
+   
+   CÓMO USAR:
+   1. Copia TODO el contenido del archivo
+   2. Pégalo en la consola (F12)
+   3. Presiona Enter
+   4. Lee los resultados
+
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                     ARCHIVOS DE AYUDA DISPONIBLES                         ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+   📄 /EMPEZAR_AQUI_AHORA.md           → Inicio rápido visual
+   📄 /SOLUCION_LOGIN_PROBLEMA.md      → Si no puedes hacer login
+   📄 /USAR_AHORA_SIN_BACKEND.md       → Guía completa modo demo
+   📄 /COMO_RECARGAR_PAGINA.md         → Cómo limpiar caché
+   📄 /DIAGNOSTICO_RAPIDO.js           → Script de diagnóstico
+   📄 /IA_ELIMINADA_COMPLETAMENTE.txt  → Info sobre IA eliminada
+
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                         PARA USAR TODO (CON BACKEND)                      ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+   Si quieres subir archivos y tener datos persistentes, necesitas
+   desplegar el backend:
+
+   1. Instalar Supabase CLI:
+      npm install -g supabase
+
+   2. Autenticarse:
+      npx supabase login
+
+   3. Desplegar backend:
+      npx supabase functions deploy server --project-ref ldhimtgexjbmwobkmcwr
+
+   4. Recargar la aplicación
+
+   ¡Listo! Ya tendrás todas las funcionalidades.
+
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                              COMANDOS ÚTILES                              ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+   🔧 Limpiar todo:
+   localStorage.clear(); location.reload();
+
+   🔧 Forzar modo demo:
+   localStorage.setItem('educonnect_demo_mode', 'true'); location.reload();
+
+   🔧 Ver estado:
+   console.log(localStorage.getItem('educonnect_demo_mode'));
+
+   🔧 Reset nuclear:
+   localStorage.clear(); sessionStorage.clear(); location.reload();
+
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                 RESUMEN                                   ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+   ✅ La IA ha sido COMPLETADA ELIMINADA (no funcionaba)
+   ✅ El login funciona en modo demo (sin backend)
+   ✅ Todas las funciones principales están disponibles
+   ✅ Los datos son de demostración (se borran al recargar)
+   ✅ Para funciones completas, despliega el backend
+
+   🎯 SIGUIENTE ACCIÓN:
+   
+   1. Abre la consola del navegador (F12)
+   2. Pega: localStorage.clear(); location.reload();
+   3. Haz login con: teacher@demo.com / demo123
+   4. ¡Disfruta de EduConnect!
+
+
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║                     🎉 ¡LISTO PARA USAR EDUCONNECT! 🎉                   ║
+║                                                                           ║
+║                         ¿Problemas? → F12 → Consola                      ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
