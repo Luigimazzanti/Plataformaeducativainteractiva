@@ -1,8 +1,7 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  NOTIFICATION CENTER - V9.9                                           ║
- * ║  FIX: CORRECCIÓN FINALÍSIMA                                           ║
- * ║       'notificationService.cleanup()' -> 'notificationService.disconnect()'
+ * ║  NOTIFICATION CENTER - V10.0                                          ║
+ * ║  FIX: Corregido el error de sintaxis (etiqueta </p> faltante)          ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
  */
 import { useState, useEffect, useCallback } from 'react';
@@ -78,11 +77,9 @@ export function NotificationCenter({ userId }: { userId: string }) {
     // Limpiar la suscripción al desmontar el componente
     return () => {
       console.log('[NotifCenter] Limpiando suscripción de notificaciones');
-      // <--- ESTE ES EL ARREGLO --- >
-      notificationService.disconnect(); // <-- 'disconnect()' es la función correcta
-      // <--- FIN DEL ARREGLO --- >
+      notificationService.disconnect();
     };
-  }, [userId, loadNotifications]); // Se ejecuta si 'userId' o 'loadNotifications' cambian
+  }, [userId, loadNotifications]); 
 
 
   const markAsRead = async (notificationId: string | 'all') => {
@@ -173,9 +170,39 @@ export function NotificationCenter({ userId }: { userId: string }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-foreground mb-1">{n.message}</p>
+                        
+                        {/* --- ESTA ES LA LÍNEA CORREGIDA --- */}
                         <p className="text-xs text-muted-foreground">
                           {formatDistanceToNow(new Date(n.createdAt), {
                             addSuffix: true,
                             locale: es,
                           })}
-                        </>
+                        </p>
+                        {/* --- FIN DE LA CORRECCIÓN --- */}
+
+                      </div>
+                      {!n.isRead && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-8 h-8 rounded-full flex-shrink-0"
+                          title="Marcar como leída"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markAsRead(n.id);
+                          }}
+                        >
+                          <div className="w-2 h-2 rounded-full bg-primary" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </PopoverContent>
+    </Popover>
+  );
+}
