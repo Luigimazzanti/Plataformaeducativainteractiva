@@ -1,8 +1,8 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  APP.TSX - RECOMPILACION NUCLEAR V9.5                                 ║
- * ║  FIX: Corregido 'AuthManager.getUser' (no existe)                     ║
- * ║       por 'apiClient.getSelf()' (correcto)                            ║
+ * ║  APP.TSX - RECOMPILACION NUCLEAR V9.6                                 ║
+ * ║  FIX: Corregido 'AuthManager.clearSession' (no existe)                ║
+ * ║       por 'AuthManager.clearAll()' (correcto)                         ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -88,10 +88,7 @@ export default function App() {
         localStorage.setItem('educonnect_demo_mode', 'true');
       }
 
-      // <--- ESTE ES EL ARREGLO --- >
-      // const { user } = await AuthManager.getUser(); // <--- INCORRECTO
-      const { user } = await apiClient.getSelf(); // <--- CORRECTO
-      // <--- FIN DEL ARREGLO --- >
+      const { user } = await apiClient.getSelf();
       
       if (user) {
         console.log('Usuario válido encontrado:', user.role);
@@ -99,11 +96,15 @@ export default function App() {
         setView(user.role === 'admin' ? 'admin-users' : 'dashboard');
       } else {
         console.log('Token inválido o expirado');
-        AuthManager.clearSession();
+        // <--- ESTE ES EL ARREGLO 1 --- >
+        AuthManager.clearAll(); // <--- CORREGIDO
+        // <--- FIN DEL ARREGLO 1 --- >
       }
     } catch (error) {
       console.error('Error al cargar sesión:', error);
-      AuthManager.clearSession();
+      // <--- ESTE ES EL ARREGLO 2 --- >
+      AuthManager.clearAll(); // <--- CORREGIDO
+      // <--- FIN DEL ARREGLO 2 --- >
     } finally {
       setIsLoading(false);
     }
@@ -126,7 +127,9 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    AuthManager.clearSession();
+    // <--- ESTE ES EL ARREGLO 3 --- >
+    AuthManager.clearAll(); // <--- CORREGIDO
+    // <--- FIN DEL ARREGLO 3 --- >
     setUser(null);
     setView('dashboard');
     // Forzar recarga para limpiar estado de demo
