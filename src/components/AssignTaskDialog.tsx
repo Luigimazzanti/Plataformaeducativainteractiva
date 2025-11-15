@@ -80,7 +80,7 @@ export function AssignTaskDialog({ open, onOpenChange, assignment, onAssignmentU
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-lg w-full">
         <DialogHeader>
           <DialogTitle>{t('assignStudents')}</DialogTitle>
           <DialogDescription>
@@ -116,35 +116,37 @@ export function AssignTaskDialog({ open, onOpenChange, assignment, onAssignmentU
           </div>
         ) : (
           <>
-            <div className="flex gap-2 mb-4">
-              <Button variant="outline" size="sm" onClick={selectAll}>
-                {t('select')} {t('allStudents')}
-              </Button>
-              <Button variant="outline" size="sm" onClick={deselectAll}>
-                {t('cancel')} {t('allStudents')}
-              </Button>
-              <div className="ml-auto text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
+            <div className="flex flex-col gap-2 mb-4">
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={selectAll} className="flex-1">
+                  {t('selectAll')}
+                </Button>
+                <Button variant="outline" size="sm" onClick={deselectAll} className="flex-1">
+                  {t('cancelAll')}
+                </Button>
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2 justify-center bg-accent/50 rounded-md py-2">
                 <UserCheck className="w-4 h-4" />
-                {selectedStudents.length} {t('of')} {students.length}
+                <span>{selectedStudents.length} {t('of')} {students.length}</span>
               </div>
             </div>
 
             <ScrollArea className="h-[400px] pr-4">
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {students.map((student) => (
                   <div
                     key={student.id}
-                    className="flex items-center gap-3 p-4 border rounded-lg hover:bg-accent cursor-pointer"
+                    className="flex items-center gap-2 p-3 border rounded-lg hover:bg-accent cursor-pointer"
                     onClick={() => toggleStudent(student.id)}
                   >
                     <Checkbox
                       checked={selectedStudents.includes(student.id)}
                       onCheckedChange={() => toggleStudent(student.id)}
                     />
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <Label className="cursor-pointer">
-                        <p>{student.name}</p>
-                        <p className="text-sm text-gray-600">{student.email}</p>
+                        <p className="truncate">{student.name}</p>
+                        <p className="text-sm text-gray-600 truncate">{student.email}</p>
                       </Label>
                     </div>
                   </div>

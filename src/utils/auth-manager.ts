@@ -146,12 +146,14 @@ export class AuthManager {
 
   /**
    * Limpia todos los datos de autenticación
+   * IMPORTANTE: Preserva las notificaciones vistas (feedback)
    */
   static clearAll(): void {
     this.clearToken();
     localStorage.removeItem(USER_ID_KEY);
     localStorage.removeItem('educonnect_current_user');
-    console.log('[AuthManager] ✅ Todos los datos de auth eliminados');
+    // NO eliminar educonnect_viewed_feedback_* para preservar notificaciones vistas
+    console.log('[AuthManager] ✅ Datos de auth eliminados (notificaciones preservadas)');
   }
 
   /**

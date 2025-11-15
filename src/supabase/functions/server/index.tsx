@@ -195,22 +195,14 @@ app.post("/generate-questions", async (c) => {
 
     const {
       text,
-      topic, // NUEVO: tema en lugar de texto
       taskName,
       spanishLevel,
       difficulty,
       questionCount,
-      questionTypes, // NUEVO: tipos de preguntas
     } = await c.req.json();
 
-    // Validaciones: ahora aceptamos TEMA o TEXTO
-    if (!text && !topic) {
-      return c.json({
-        error: "Debes proporcionar un texto o un tema"
-      }, 400);
-    }
-    
-    if (text && text.length < 50) {
+    // Validaciones
+    if (!text || text.length < 50) {
       return c.json({
         error: "El texto debe tener al menos 50 caracteres"
       }, 400);
@@ -235,146 +227,86 @@ app.post("/generate-questions", async (c) => {
       return c.json({ error: "Cantidad de preguntas inválida" }, 400);
     }
 
-    // Obtener API key de GROQ (alternativa a Gemini - GRATIS)
-    const groqKey = Deno.env.get("GROQ_API_KEY");
-    if (!groqKey) {
+    // Obtener API key de Gemini
+    const geminiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!geminiKey) {
       return c.json({
-        error: "GROQ_API_KEY no configurada. Ve a https://console.groq.com/ para obtener una API key gratuita, luego agrégala en Supabase Dashboard → Settings → Edge Function Secrets"
+        error: "GEMINI_API_KEY no configurada. Ve a Supabase Dashboard → Settings → Secrets y agrega tu API key"
       }, 500);
     }
 
-    // Determinar tipos de preguntas permitidos
-    const allowedTypes = questionTypes || ['multiple-choice', 'fill-blank', 'true-false'];
-    
-    // Construir prompt MEJORADO para preguntas INTELIGENTES
-    const systemPrompt = `Eres un profesor de español NATIVO y experto en didáctica. Creas ejercicios REALISTAS, CONTEXTUALES y DESAFIANTES para estudiantes de español como lengua extranjera. Evitas preguntas obvias o demasiado simples.`;
-    
-    // Preparar contexto (TEMA o TEXTO)
-    const baseContext = topic 
-      ? `TEMA: "${topic}"`
-      : `TEXTO BASE:\n${text}`;
-    
-    // Definir criterios por nivel
-    const levelGuidelines = {
-      'A1': 'Vocabulario básico (saludos, números, familia). Presente simple. Oraciones cortas.',
-      'A2': 'Rutinas diarias, pasado simple. Descripciones básicas. Comparaciones simples.',
-      'B1': 'Expresar opiniones, futuro, condicional simple. Conectores básicos. Situaciones cotidianas complejas.',
-      'B2': 'Subjuntivo, expresiones idiomáticas. Argumentación. Textos formales e informales.',
-      'C1': 'Matices lingüísticos, ironía, registro. Estructuras complejas. Literatura y cultura.',
-      'C2': 'Dominio nativo. Sutilezas semánticas. Análisis crítico profundo.'
-    };
+    // Construir prompt mejorado
+    const prompt = `
+Eres un profesor de español experto creando ejercicios educativos.
 
-    const difficultyGuidelines = {
-      'Fácil': 'Información explícita. Vocabulario conocido. Respuestas directas.',
-      'Medio': 'Requiere inferencia básica. Vocabulario contextual. Aplicación de reglas.',
-      'Difícil': 'Análisis profundo. Vocabulario avanzado. Pensamiento crítico. Excepciones gramaticales.'
-    };
-    
-    const userPrompt = `
-${baseContext}
+CONTEXTO:
+- Nombre de la tarea: "${taskName}"
+- Nivel de español: ${spanishLevel} (Marco Común Europeo)
+- Dificultad: ${difficulty}
+- Cantidad de preguntas: ${questionCount}
 
-📋 CONFIGURACIÓN:
-• Tarea: "${taskName}"
-• Nivel: ${spanishLevel} → ${levelGuidelines[spanishLevel] || levelGuidelines['B1']}
-• Dificultad: ${difficulty} → ${difficultyGuidelines[difficulty] || difficultyGuidelines['Medio']}
-• Cantidad: ${questionCount} preguntas
-• Tipos permitidos: ${allowedTypes.join(', ')}
+TEXTO BASE:
+${text}
 
-⚠️ REGLAS ESTRICTAS:
-1. NO hagas preguntas obvias tipo "¿Cuál describe a alguien alto? → Es alto"
-2. NO uses ejemplos absurdos o poco naturales
-3. SÍ crea preguntas CONTEXTUALES y REALISTAS
-4. SÍ varía el tipo de pregunta (usa TODOS los tipos permitidos)
-5. Las opciones incorrectas deben ser PLAUSIBLES (no obvias)
-6. Para "rellenar blancos": usa conjugaciones verbales, preposiciones, vocabulario contextual
-7. Para "verdadero/falso": crea afirmaciones que requieran COMPRENSIÓN, no memoria literal
-8. Explicaciones CONCISAS pero útiles
+INSTRUCCIONES:
+1. Genera EXACTAMENTE ${questionCount} preguntas de opción múltiple
+2. Las preguntas deben ser apropiadas para nivel ${spanishLevel}
+3. Dificultad: ${difficulty}
+4. Cada pregunta debe tener 4 opciones (A, B, C, D)
+5. Solo UNA respuesta correcta por pregunta
+6. Las preguntas deben evaluar comprensión del texto
+7. Varía la dificultad entre preguntas (literal, inferencial, crítica)
 
-💡 EJEMPLOS DE CALIDAD:
-
-❌ MAL (nivel B1, tema "Describir personas"):
-"¿Cuál describe a alguien alto y delgado?"
-→ "Es alto y delgado" ✓
-Razón: Pregunta circular, obvia, sin contexto
-
-✅ BIEN (nivel B1, tema "Describir personas"):
-"Carlos mide 1.90m y pesa 70kg. Sus amigos dicen que parece un jugador de baloncesto. ¿Cómo lo describirías?"
-→ "Es alto y delgado" ✓
-Razón: Requiere inferencia, contexto realista
-
-❌ MAL (rellenar blancos):
-"La persona que _____ (ser) amable"
-Razón: Demasiado simple, sin contexto
-
-✅ BIEN (rellenar blancos, nivel B1):
-"Ayer _____ (conocer) a la nueva vecina y me pareció muy simpática"
-→ "conocí"
-Razón: Requiere conjugación correcta en pasado, contexto natural
-
-FORMATO JSON (sin markdown, sin comentarios):
+FORMATO DE RESPUESTA (JSON):
 {
   "taskName": "${taskName}",
   "spanishLevel": "${spanishLevel}",
   "difficulty": "${difficulty}",
   "questions": [
     {
-      "type": "multiple-choice",
-      "question": "Pregunta contextual y realista",
-      "options": ["Opción plausible 1", "Opción correcta", "Opción plausible 3", "Opción plausible 4"],
-      "correctAnswer": 1,
-      "explanation": "Explicación concisa",
-      "points": 1
-    },
-    {
-      "type": "fill-blank",
-      "question": "María siempre _____ (levantarse) temprano para ir al trabajo",
-      "correctAnswer": "se levanta",
-      "explanation": "Verbo reflexivo en presente, tercera persona",
-      "points": 1
-    },
-    {
-      "type": "true-false",
-      "question": "En español, el subjuntivo se usa después de expresiones de certeza como 'estoy seguro de que'",
-      "correctAnswer": false,
-      "explanation": "El subjuntivo se usa con duda/emoción, no con certeza",
-      "points": 1
+      "question": "Pregunta clara y específica",
+      "options": ["Opción A", "Opción B", "Opción C", "Opción D"],
+      "correctAnswer": 0,
+      "explanation": "Breve explicación de por qué esta es la respuesta correcta"
     }
   ]
-}`;
+}
 
+IMPORTANTE: Responde SOLO con JSON válido, sin texto adicional antes o después.
+`;
 
-    // Llamar a GROQ API (compatible con OpenAI)
+    // Llamar a Gemini API
     const response = await fetch(
-      "https://api.groq.com/openai/v1/chat/completions",
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + geminiKey,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${groqKey}`,
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile", // Modelo gratuito y rápido
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt }
-          ],
-          temperature: 0.7,
-          max_tokens: 4096,
-          response_format: { type: "json_object" } // Forzar respuesta JSON
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 4096,
+          }
         })
       }
     );
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error("GROQ API error:", response.status, errorData);
+      console.error("Gemini API error:", errorData);
       return c.json({
-        error: `Error ${response.status} al conectar con GROQ API. Verifica que tu API key sea válida. Detalles: ${errorData}`
+        error: "Error al conectar con Gemini API. Verifica que tu API key sea válida."
       }, 500);
     }
 
     const data = await response.json();
-    const generatedText = data.choices?.[0]?.message?.content;
+    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!generatedText) {
       return c.json({
@@ -382,21 +314,16 @@ FORMATO JSON (sin markdown, sin comentarios):
       }, 500);
     }
 
-    // Parsear JSON (GROQ devuelve JSON puro gracias a response_format)
-    let result;
-    try {
-      result = JSON.parse(generatedText);
-    } catch (parseError) {
-      // Intentar extraer JSON si hay markdown
-      const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.error("Response was not valid JSON:", generatedText);
-        return c.json({
-          error: "La IA no devolvió un formato válido. Intenta de nuevo."
-        }, 500);
-      }
-      result = JSON.parse(jsonMatch[0]);
+    // Extraer JSON (Gemini a veces agrega markdown)
+    const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("Response was not valid JSON:", generatedText);
+      return c.json({
+        error: "La IA no devolvió un formato válido. Intenta de nuevo."
+      }, 500);
     }
+
+    const result = JSON.parse(jsonMatch[0]);
 
     return c.json({
       taskName: result.taskName || taskName,
@@ -452,7 +379,7 @@ app.post("/assignments", async (c) => {
   }
 });
 
-// Obtener todas las tareas (del profesor O asignadas al estudiante)
+// Obtener todas las tareas del profesor
 app.get("/assignments", async (c) => {
   try {
     const token = c.req.header("Authorization")?.split(" ")[1];
@@ -462,10 +389,7 @@ app.get("/assignments", async (c) => {
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    const userRole = user.user_metadata?.role || 'student';
-
-    // Obtener todas las tareas
-    const { data: assignmentsData, error: dbError } = await supabaseAdmin
+    const { data, error: dbError } = await supabaseAdmin
       .from("kv_store")
       .select("value")
       .like("key", "assignment:%");
@@ -474,65 +398,9 @@ app.get("/assignments", async (c) => {
       return c.json({ error: dbError.message }, 500);
     }
 
-    let assignments = assignmentsData?.map((row) => row.value) || [];
-
-    // Si es profesor: solo sus tareas + contar entregas nuevas
-    if (userRole === 'teacher') {
-      assignments = assignments.filter((a) => a.teacherId === user.id);
-      
-      // Contar entregas nuevas sin revisar para cada tarea
-      const { data: submissionsData } = await supabaseAdmin
-        .from("kv_store")
-        .select("value")
-        .like("key", "submission:%");
-
-      const submissionsByAssignment: Record<string, any[]> = {};
-      (submissionsData || []).forEach((row) => {
-        const sub = row.value;
-        if (!submissionsByAssignment[sub.assignmentId]) {
-          submissionsByAssignment[sub.assignmentId] = [];
-        }
-        submissionsByAssignment[sub.assignmentId].push(sub);
-      });
-
-      // Agregar contador de entregas nuevas
-      assignments = assignments.map((assignment) => {
-        const subs = submissionsByAssignment[assignment.id] || [];
-        // Contar entregas sin calificar (grade === null o undefined)
-        const newSubmissions = subs.filter(s => s.grade === null || s.grade === undefined);
-        return {
-          ...assignment,
-          newSubmissionsCount: newSubmissions.length,
-        };
-      });
-    }
-    // Si es estudiante: solo tareas asignadas a él
-    else if (userRole === 'student') {
-      // Obtener todas las asignaciones de tareas
-      const { data: assignedData, error: assignedError } = await supabaseAdmin
-        .from("kv_store")
-        .select("key, value")
-        .like("key", "assignment_students:%");
-
-      if (!assignedError && assignedData) {
-        // Crear set de assignment IDs donde el estudiante está asignado
-        const assignedAssignmentIds = new Set<string>();
-        assignedData.forEach((row) => {
-          const studentIds = row.value?.studentIds || [];
-          if (studentIds.includes(user.id)) {
-            // Extraer el assignmentId de la key "assignment_students:ASSIGNMENT_ID"
-            const assignmentId = row.key.replace('assignment_students:', '');
-            assignedAssignmentIds.add(assignmentId);
-          }
-        });
-
-        // Filtrar solo las tareas asignadas
-        assignments = assignments.filter((a) => assignedAssignmentIds.has(a.id));
-      } else {
-        // Si no hay asignaciones, no hay tareas
-        assignments = [];
-      }
-    }
+    const assignments = data
+      ?.map((row) => row.value)
+      .filter((a) => a.teacherId === user.id) || [];
 
     return c.json({ assignments });
   } catch (error: any) {
@@ -634,9 +502,9 @@ app.delete("/assignments/:id", async (c) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
 // ESTUDIANTES
-// ═══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
 
 // Obtener mis estudiantes (como profesor)
 app.get("/my-students", async (c) => {
@@ -848,31 +716,11 @@ app.post("/submissions", async (c) => {
     const submissionData = await c.req.json();
     const submissionId = crypto.randomUUID();
     
-    // Obtener la tarea original para guardar una copia de sus datos
-    const { data: assignmentData } = await supabaseAdmin
-      .from("kv_store")
-      .select("value")
-      .eq("key", `assignment:${submissionData.assignmentId}`)
-      .single();
-    
-    const assignment = assignmentData?.value;
-    
     const submission = {
       id: submissionId,
       ...submissionData,
       studentId: user.id,
       submittedAt: new Date().toISOString(),
-      // Si viene con grade (autocorrección), marcar como calificado
-      gradedAt: submissionData.grade !== undefined ? new Date().toISOString() : null,
-      // Guardar una copia de los datos de la tarea para mantener independencia
-      assignmentTitle: assignment?.title || 'Tarea sin título',
-      assignmentType: assignment?.type,
-      assignmentDescription: assignment?.description,
-      assignmentQuestions: assignment?.questions,
-      assignmentFiles: assignment?.files,
-      assignmentFormFields: assignment?.formFields,
-      assignmentContent: assignment?.content,
-      assignmentFileUrl: assignment?.fileUrl,
     };
 
     await supabaseAdmin
@@ -912,27 +760,7 @@ app.get("/assignments/:id/submissions", async (c) => {
       ?.map((row) => row.value)
       .filter((s) => s.assignmentId === assignmentId) || [];
 
-    // Enriquecer submissions con datos del estudiante
-    const enrichedSubmissions = await Promise.all(
-      submissions.map(async (submission) => {
-        try {
-          const { data: { user: student } } = await supabaseAdmin.auth.admin.getUserById(submission.studentId);
-          return {
-            ...submission,
-            studentName: student?.user_metadata?.name || 'Estudiante',
-            studentEmail: student?.email || '',
-          };
-        } catch (err) {
-          return {
-            ...submission,
-            studentName: 'Estudiante',
-            studentEmail: '',
-          };
-        }
-      })
-    );
-
-    return c.json({ submissions: enrichedSubmissions });
+    return c.json({ submissions });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
   }
@@ -1014,63 +842,6 @@ app.post("/submissions/:id/grade", async (c) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// ANOTACIONES EN PDFs
-// ═══════════════════════════════════════════════════════════════════
-
-// Guardar anotaciones de PDF
-app.post("/annotations", async (c) => {
-  try {
-    const token = c.req.header("Authorization")?.split(" ")[1];
-    const { user, error } = await authenticateUser(token);
-
-    if (error || !user) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const { assignmentId, annotations } = await c.req.json();
-
-    // Store annotations with user ID
-    await supabaseAdmin
-      .from("kv_store")
-      .upsert({
-        key: `annotations:${assignmentId}:${user.id}`,
-        value: { assignmentId, userId: user.id, annotations, updatedAt: new Date().toISOString() },
-      });
-
-    return c.json({ success: true });
-  } catch (error: any) {
-    return c.json({ error: error.message }, 500);
-  }
-});
-
-// Obtener anotaciones de PDF
-app.get("/annotations/:assignmentId", async (c) => {
-  try {
-    const token = c.req.header("Authorization")?.split(" ")[1];
-    const { user, error } = await authenticateUser(token);
-
-    if (error || !user) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const assignmentId = c.req.param("assignmentId");
-    const { data, error: dbError } = await supabaseAdmin
-      .from("kv_store")
-      .select("value")
-      .eq("key", `annotations:${assignmentId}:${user.id}`)
-      .single();
-
-    if (dbError || !data) {
-      return c.json({ annotations: [] });
-    }
-
-    return c.json({ annotations: data.value.annotations || [] });
-  } catch (error: any) {
-    return c.json({ error: error.message }, 500);
-  }
-});
-
-// ═══════════════════════════════════════════════════════════════════
 // MATERIALES
 // ═══════════════════════════════════════════════════════════════════
 
@@ -1084,19 +855,65 @@ app.post("/upload", async (c) => {
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    // Since we're using KV store and not actual file storage,
-    // we'll return a mock file URL for now
+    // Obtener el archivo del form data
+    const body = await c.req.parseBody();
+    const file = body.file;
+    
+    if (!file || typeof file === 'string') {
+      return c.json({ error: "No file provided" }, 400);
+    }
+
+    console.log('📤 [Upload] Procesando archivo:', {
+      name: file.name,
+      type: file.type,
+      size: file.size
+    });
+
+    // Límite de 10MB
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      return c.json({ 
+        error: `Archivo demasiado grande. Máximo: ${MAX_SIZE / 1024 / 1024}MB` 
+      }, 400);
+    }
+
+    // Convertir el archivo a base64
+    const arrayBuffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    
+    // Convertir bytes a base64 de forma más eficiente
+    let binary = '';
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64 = btoa(binary);
+    
+    // Crear data URL con el tipo correcto
+    const mimeType = file.type || 'application/octet-stream';
+    const dataUrl = `data:${mimeType};base64,${base64}`;
+    
     const fileId = crypto.randomUUID();
-    const fileUrl = `https://placeholder.com/files/${fileId}`;
+
+    console.log('✅ [Upload] Archivo convertido exitosamente:', {
+      name: file.name,
+      type: mimeType,
+      size: bytes.length,
+      dataUrlLength: dataUrl.length
+    });
 
     return c.json({ 
-      url: fileUrl,
+      url: dataUrl,
       id: fileId,
-      name: "uploaded-file",
-      type: "application/octet-stream",
+      name: file.name || "uploaded-file",
+      type: mimeType,
+      size: bytes.length
     });
   } catch (error: any) {
-    return c.json({ error: error.message }, 500);
+    console.error('❌ [Upload] Error:', error);
+    return c.json({ 
+      error: `Error al subir archivo: ${error.message}` 
+    }, 500);
   }
 });
 
@@ -1114,7 +931,7 @@ app.get("/admin/users", async (c) => {
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    // Check if user is admin (you can add admin check in metadata)
+    // Check if user is admin
     if (user.user_metadata?.role !== 'admin') {
       return c.json({ error: "Forbidden - Admin only" }, 403);
     }
@@ -1263,349 +1080,6 @@ app.put("/user/avatar", async (c) => {
 
     return c.json({ success: true, avatar });
   } catch (error: any) {
-    return c.json({ error: error.message }, 500);
-  }
-});
-
-// Actualizar metadatos de usuario (admin only)
-app.put("/admin/users/:id/metadata", async (c) => {
-  try {
-    const token = c.req.header("Authorization")?.split(" ")[1];
-    const { user, error } = await authenticateUser(token);
-
-    if (error || !user) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    if (user.user_metadata?.role !== 'admin') {
-      return c.json({ error: "Forbidden - Admin only" }, 403);
-    }
-
-    const userId = c.req.param("id");
-    const { name, role, avatar } = await c.req.json();
-
-    // Obtener usuario actual
-    const { data: targetUser } = await supabaseAdmin.auth.admin.getUserById(userId);
-    
-    if (!targetUser || !targetUser.user) {
-      return c.json({ error: "User not found" }, 404);
-    }
-
-    // Actualizar metadatos
-    const updatedMetadata: any = { ...targetUser.user.user_metadata };
-    if (name !== undefined) updatedMetadata.name = name;
-    if (role !== undefined) updatedMetadata.role = role;
-    if (avatar !== undefined) updatedMetadata.avatar = avatar;
-
-    await supabaseAdmin.auth.admin.updateUserById(userId, {
-      user_metadata: updatedMetadata,
-    });
-
-    return c.json({ success: true, user: { ...targetUser.user, user_metadata: updatedMetadata } });
-  } catch (error: any) {
-    return c.json({ error: error.message }, 500);
-  }
-});
-
-// ═══════════════════════════════════════════════════════════════════
-// ANOTACIONES EN PDFs
-// ═══════════════════════════════════════════════════════════════════
-
-// Guardar anotaciones en PDF
-app.post("/annotations", async (c) => {
-  try {
-    const token = c.req.header("Authorization")?.split(" ")[1];
-    const { user, error } = await authenticateUser(token);
-
-    if (error || !user) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const { assignmentId, annotations } = await c.req.json();
-
-    if (!assignmentId) {
-      return c.json({ error: "assignmentId is required" }, 400);
-    }
-
-    // Guardar en kv_store usando la key completa (que puede incluir :studentId:teacher)
-    const key = `annotations_${assignmentId}`;
-    
-    await supabaseAdmin
-      .from("kv_store_05c2b65f")
-      .upsert({ key, value: { annotations } });
-
-    return c.json({ success: true });
-  } catch (error: any) {
-    console.error("Error saving annotations:", error);
-    return c.json({ error: error.message }, 500);
-  }
-});
-
-// Obtener anotaciones de PDF
-app.get("/annotations/:assignmentId", async (c) => {
-  try {
-    const token = c.req.header("Authorization")?.split(" ")[1];
-    const { user, error } = await authenticateUser(token);
-
-    if (error || !user) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const assignmentId = c.req.param("assignmentId");
-    const key = `annotations_${assignmentId}`;
-
-    const { data } = await supabaseAdmin
-      .from("kv_store_05c2b65f")
-      .select("value")
-      .eq("key", key)
-      .maybeSingle();
-
-    return c.json({ 
-      annotations: data?.value?.annotations || [] 
-    });
-  } catch (error: any) {
-    console.error("Error getting annotations:", error);
-    return c.json({ error: error.message }, 500);
-  }
-});
-
-// ═══════════════════════════════════════════════════════════════════
-// NOTIFICACIONES
-// ═══════════════════════════════════════════════════════════════════
-
-// Obtener todas las notificaciones del usuario
-app.get("/notifications", async (c) => {
-  try {
-    const token = c.req.header("Authorization")?.split(" ")[1];
-    const { user, error } = await authenticateUser(token);
-
-    if (error || !user) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const role = user.user_metadata?.role || 'student';
-    const key = `notifications:${user.id}:${role}`;
-
-    const { data } = await supabaseAdmin
-      .from("kv_store")
-      .select("value")
-      .eq("key", key)
-      .maybeSingle();
-
-    const notifications = data?.value?.notifications || [];
-    
-    // Ordenar por fecha (más recientes primero)
-    const sorted = notifications.sort((a: any, b: any) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-
-    return c.json({ notifications: sorted });
-  } catch (error: any) {
-    console.error("Error getting notifications:", error);
-    return c.json({ error: error.message }, 500);
-  }
-});
-
-// Crear una nueva notificación
-app.post("/notifications", async (c) => {
-  try {
-    const token = c.req.header("Authorization")?.split(" ")[1];
-    const { user, error } = await authenticateUser(token);
-
-    if (error || !user) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const { userId, role, notification } = await c.req.json();
-    const targetUserId = userId || user.id;
-    const targetRole = role || user.user_metadata?.role || 'student';
-    const key = `notifications:${targetUserId}:${targetRole}`;
-
-    // Obtener notificaciones existentes
-    const { data: existing } = await supabaseAdmin
-      .from("kv_store")
-      .select("value")
-      .eq("key", key)
-      .maybeSingle();
-
-    const notifications = existing?.value?.notifications || [];
-
-    // Agregar nueva notificación
-    const newNotification = {
-      ...notification,
-      id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      createdAt: new Date().toISOString(),
-      read: false,
-      is_read: false,
-    };
-
-    notifications.unshift(newNotification);
-
-    // Mantener solo las últimas 50 notificaciones
-    const trimmed = notifications.slice(0, 50);
-
-    // Guardar
-    await supabaseAdmin
-      .from("kv_store")
-      .upsert({
-        key,
-        value: { notifications: trimmed },
-      });
-
-    return c.json({ success: true, notification: newNotification });
-  } catch (error: any) {
-    console.error("Error creating notification:", error);
-    return c.json({ error: error.message }, 500);
-  }
-});
-
-// Marcar notificaciones como leídas
-app.post("/notifications/mark-read", async (c) => {
-  try {
-    const token = c.req.header("Authorization")?.split(" ")[1];
-    const { user, error } = await authenticateUser(token);
-
-    if (error || !user) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const { notificationIds } = await c.req.json();
-
-    if (!Array.isArray(notificationIds) || notificationIds.length === 0) {
-      return c.json({ error: "notificationIds must be a non-empty array" }, 400);
-    }
-
-    const role = user.user_metadata?.role || 'student';
-    const key = `notifications:${user.id}:${role}`;
-
-    // Obtener notificaciones existentes
-    const { data: existing } = await supabaseAdmin
-      .from("kv_store")
-      .select("value")
-      .eq("key", key)
-      .maybeSingle();
-
-    if (!existing?.value?.notifications) {
-      return c.json({ success: true, updatedCount: 0 });
-    }
-
-    const notifications = existing.value.notifications;
-
-    // Marcar como leídas las notificaciones especificadas
-    let updatedCount = 0;
-    const updated = notifications.map((n: any) => {
-      if (notificationIds.includes(n.id) && !n.read) {
-        updatedCount++;
-        return { ...n, read: true, is_read: true };
-      }
-      return n;
-    });
-
-    // Guardar cambios
-    await supabaseAdmin
-      .from("kv_store")
-      .upsert({
-        key,
-        value: { notifications: updated },
-      });
-
-    return c.json({ success: true, updatedCount });
-  } catch (error: any) {
-    console.error("Error marking notifications as read:", error);
-    return c.json({ error: error.message }, 500);
-  }
-});
-
-// Marcar todas las notificaciones como leídas
-app.post("/notifications/mark-all-read", async (c) => {
-  try {
-    const token = c.req.header("Authorization")?.split(" ")[1];
-    const { user, error } = await authenticateUser(token);
-
-    if (error || !user) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const role = user.user_metadata?.role || 'student';
-    const key = `notifications:${user.id}:${role}`;
-
-    // Obtener notificaciones existentes
-    const { data: existing } = await supabaseAdmin
-      .from("kv_store")
-      .select("value")
-      .eq("key", key)
-      .maybeSingle();
-
-    if (!existing?.value?.notifications) {
-      return c.json({ success: true, updatedCount: 0 });
-    }
-
-    const notifications = existing.value.notifications;
-
-    // Marcar todas como leídas
-    let updatedCount = 0;
-    const updated = notifications.map((n: any) => {
-      if (!n.read) {
-        updatedCount++;
-        return { ...n, read: true, is_read: true };
-      }
-      return n;
-    });
-
-    // Guardar cambios
-    await supabaseAdmin
-      .from("kv_store")
-      .upsert({
-        key,
-        value: { notifications: updated },
-      });
-
-    return c.json({ success: true, updatedCount });
-  } catch (error: any) {
-    console.error("Error marking all notifications as read:", error);
-    return c.json({ error: error.message }, 500);
-  }
-});
-
-// Eliminar una notificación
-app.delete("/notifications/:id", async (c) => {
-  try {
-    const token = c.req.header("Authorization")?.split(" ")[1];
-    const { user, error } = await authenticateUser(token);
-
-    if (error || !user) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const notificationId = c.req.param("id");
-    const role = user.user_metadata?.role || 'student';
-    const key = `notifications:${user.id}:${role}`;
-
-    // Obtener notificaciones existentes
-    const { data: existing } = await supabaseAdmin
-      .from("kv_store")
-      .select("value")
-      .eq("key", key)
-      .maybeSingle();
-
-    if (!existing?.value?.notifications) {
-      return c.json({ success: true });
-    }
-
-    const notifications = existing.value.notifications;
-    const filtered = notifications.filter((n: any) => n.id !== notificationId);
-
-    // Guardar cambios
-    await supabaseAdmin
-      .from("kv_store")
-      .upsert({
-        key,
-        value: { notifications: filtered },
-      });
-
-    return c.json({ success: true });
-  } catch (error: any) {
-    console.error("Error deleting notification:", error);
     return c.json({ error: error.message }, 500);
   }
 });

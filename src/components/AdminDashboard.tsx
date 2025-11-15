@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Alert, AlertDescription } from './ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
-import { Shield, Users, LogOut, Trash2, UserPlus, UserMinus, Lock, Unlock, Moon, Sun, Globe, AlertCircle, GraduationCap, User } from 'lucide-react';
+import { Input } from './ui/input';
+import { Shield, Users, LogOut, Trash2, UserPlus, UserMinus, Lock, Unlock, Moon, Sun, Globe, AlertCircle, GraduationCap, User, Edit } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { useLanguage } from '../utils/LanguageContext';
 import { useTheme } from '../utils/ThemeContext';
@@ -41,6 +42,10 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
   const [selectedStudent, setSelectedStudent] = useState<User | null>(null);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editRole, setEditRole] = useState<'teacher' | 'student'>('student');
   const { t, currentLanguage, changeLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
 
@@ -119,7 +124,7 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
 
     try {
       await apiClient.assignTeacherToStudent(selectedTeacher, selectedStudent.id);
-      toast.success(t('teacherAssigned') || 'Teacher assigned successfully');
+      toast.success('✅ Profesor asignado correctamente');
       setShowAssignDialog(false);
       setSelectedStudent(null);
       setSelectedTeacher('');
@@ -130,7 +135,49 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
     }
   };
 
-  const getInitials = (name: string) => {
+  const handleUnassignTeacher = async (teacherId: string, studentId: string, teacherName: string) => {
+    try {
+      await apiClient.unassignTeacherFromStudent(teacherId, studentId);
+      toast.success(`✅ Profesor ${teacherName} desasignado correctamente`);
+      loadUsers();
+    } catch (error: any) {
+      console.error('Error unassigning teacher:', error);
+      toast.error(error.message || 'Error al desasignar profesor');
+    }
+  };
+
+  const openEditDialog = (user: User) => {
+    setEditingUser(user);
+    setEditName(user.name || '');
+    setEditRole(user.role);
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateUser = async () => {
+    if (!editingUser) return;
+    
+    if (!editName.trim()) {
+      toast.error('El nombre es requerido');
+      return;
+    }
+
+    try {
+      await apiClient.updateUserMetadata(editingUser.id, {
+        name: editName.trim(),
+        role: editRole,
+      });
+      toast.success('✅ Usuario actualizado correctamente');
+      setShowEditDialog(false);
+      setEditingUser(null);
+      loadUsers();
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      toast.error(error.message || 'Error al actualizar usuario');
+    }
+  };
+
+  const getInitials = (name: string | undefined) => {
+    if (!name || typeof name !== 'string') return '??';
     return name
       .split(' ')
       .map(n => n[0])
@@ -303,7 +350,7 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
                           </Avatar>
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
-                              <p className="truncate max-w-[150px] sm:max-w-none">{u.name}</p>
+                              <p className="truncate max-w-[150px] sm:max-w-none">{u.name || 'Sin nombre'}</p>
                               <Badge variant={u.role === 'teacher' ? 'default' : 'secondary'} className="text-[10px] sm:text-xs">
                                 {u.role}
                               </Badge>
@@ -315,9 +362,40 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
                               )}
                             </div>
                             <p className="text-xs sm:text-sm text-muted-foreground truncate">{u.email}</p>
+                            {u.role === 'student' && u.teacherIds && u.teacherIds.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {u.teacherIds.map(teacherId => {
+                                  const teacher = teachers.find(t => t.id === teacherId);
+                                  return teacher ? (
+                                    <Badge key={teacherId} variant="outline" className="text-[10px] flex items-center gap-1">
+                                      <GraduationCap className="w-2.5 h-2.5" />
+                                      {teacher.name}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleUnassignTeacher(teacherId, u.id, teacher.name || 'Profesor');
+                                        }}
+                                        className="ml-0.5 hover:text-destructive"
+                                      >
+                                        ×
+                                      </button>
+                                    </Badge>
+                                  ) : null;
+                                })}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap flex-shrink-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditDialog(u)}
+                            className="text-xs h-8 px-2 sm:px-3"
+                          >
+                            <Edit className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                            <span className="hidden sm:inline">Editar</span>
+                          </Button>
                           {u.role === 'student' && (
                             <Button
                               variant="outline"
@@ -326,13 +404,15 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
                               className="text-xs h-8 px-2 sm:px-3"
                             >
                               <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
-                              <span className="hidden sm:inline">{t('assignTeacher') || 'Assign'}</span>
+                              <span className="hidden sm:inline">
+                                {u.teacherIds && u.teacherIds.length > 0 ? 'Añadir Profesor' : 'Asignar Profesor'}
+                              </span>
                             </Button>
                           )}
                           <Button
                             variant={u.blocked ? "outline" : "destructive"}
                             size="sm"
-                            onClick={() => handleBlockUser(u.id, u.name, u.blocked || false)}
+                            onClick={() => handleBlockUser(u.id, u.name || 'Usuario', u.blocked || false)}
                             className="text-xs h-8 px-2 sm:px-3"
                           >
                             {u.blocked ? (
@@ -396,9 +476,18 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
                         </div>
                         <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                           <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditDialog(u)}
+                            className="text-xs h-8 px-2 sm:px-3"
+                          >
+                            <Edit className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                            <span className="hidden sm:inline">Editar</span>
+                          </Button>
+                          <Button
                             variant={u.blocked ? "outline" : "destructive"}
                             size="sm"
-                            onClick={() => handleBlockUser(u.id, u.name, u.blocked || false)}
+                            onClick={() => handleBlockUser(u.id, u.name || 'Usuario', u.blocked || false)}
                             className="text-xs h-8 px-2 sm:px-3"
                           >
                             {u.blocked ? (
@@ -416,7 +505,7 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => handleDeleteUser(u.id, u.name)}
+                            onClick={() => handleDeleteUser(u.id, u.name || 'Usuario')}
                             className="h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2"
                           >
                             <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -449,7 +538,7 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
                           </Avatar>
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
-                              <p className="truncate max-w-[150px] sm:max-w-none">{u.name}</p>
+                              <p className="truncate max-w-[150px] sm:max-w-none">{u.name || 'Sin nombre'}</p>
                               {u.blocked && (
                                 <Badge variant="destructive" className="text-[10px] sm:text-xs">
                                   <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
@@ -458,9 +547,40 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
                               )}
                             </div>
                             <p className="text-xs sm:text-sm text-muted-foreground truncate">{u.email}</p>
+                            {u.teacherIds && u.teacherIds.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {u.teacherIds.map(teacherId => {
+                                  const teacher = teachers.find(t => t.id === teacherId);
+                                  return teacher ? (
+                                    <Badge key={teacherId} variant="outline" className="text-[10px] flex items-center gap-1">
+                                      <GraduationCap className="w-2.5 h-2.5" />
+                                      {teacher.name}
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleUnassignTeacher(teacherId, u.id, teacher.name || 'Profesor');
+                                        }}
+                                        className="ml-0.5 hover:text-destructive"
+                                      >
+                                        ×
+                                      </button>
+                                    </Badge>
+                                  ) : null;
+                                })}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap flex-shrink-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditDialog(u)}
+                            className="text-xs h-8 px-2 sm:px-3"
+                          >
+                            <Edit className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                            <span className="hidden sm:inline">Editar</span>
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -468,12 +588,12 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
                             className="text-xs h-8 px-2 sm:px-3"
                           >
                             <UserPlus className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
-                            <span className="hidden sm:inline">{t('assignTeacher') || 'Assign'}</span>
+                            <span className="hidden sm:inline">Asignar Profesor</span>
                           </Button>
                           <Button
                             variant={u.blocked ? "outline" : "destructive"}
                             size="sm"
-                            onClick={() => handleBlockUser(u.id, u.name, u.blocked || false)}
+                            onClick={() => handleBlockUser(u.id, u.name || 'Usuario', u.blocked || false)}
                             className="text-xs h-8 px-2 sm:px-3"
                           >
                             {u.blocked ? (
@@ -491,7 +611,7 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => handleDeleteUser(u.id, u.name)}
+                            onClick={() => handleDeleteUser(u.id, u.name || 'Usuario')}
                             className="h-8 w-8 sm:w-auto sm:px-3 p-0 sm:p-2"
                           >
                             <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -544,6 +664,52 @@ export function AdminDashboard({ user, onLogout, onUpdateProfile }: AdminDashboa
               </Button>
               <Button onClick={handleAssignTeacher} disabled={!selectedTeacher}>
                 {t('assign') || 'Assign'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>✏️ Editar Usuario</DialogTitle>
+            <DialogDescription>
+              Edita el nombre y rol del usuario. Los cambios se aplicarán inmediatamente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Email (no editable)</Label>
+              <Input value={editingUser?.email || ''} disabled className="bg-muted" />
+            </div>
+            <div className="space-y-2">
+              <Label>Nombre completo *</Label>
+              <Input 
+                value={editName} 
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Ej: María García"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Rol *</Label>
+              <Select value={editRole} onValueChange={(val: 'teacher' | 'student') => setEditRole(val)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="teacher">Profesor</SelectItem>
+                  <SelectItem value="student">Estudiante</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleUpdateUser} disabled={!editName.trim()}>
+                💾 Guardar Cambios
               </Button>
             </div>
           </div>

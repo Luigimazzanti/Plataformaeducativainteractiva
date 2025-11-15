@@ -35,14 +35,14 @@ export function AssignmentStatsCard({ assignment }: AssignmentStatsCardProps) {
   return (
     <div className="flex items-center gap-2 text-sm">
       {assignedCount > 0 ? (
-        <Badge variant="default" className="gap-1">
-          <UserCheck className="w-3 h-3" />
-          Asignado a {assignedCount} estudiante{assignedCount !== 1 ? 's' : ''}
+        <Badge variant="default" className="gap-1 text-xs whitespace-nowrap">
+          <UserCheck className="w-3 h-3 flex-shrink-0" />
+          <span>{assignedCount}</span>
         </Badge>
       ) : (
-        <Badge variant="secondary" className="gap-1">
-          <AlertCircle className="w-3 h-3" />
-          Sin asignar
+        <Badge className="gap-1 text-xs whitespace-nowrap bg-gray-500 text-white hover:bg-gray-600">
+          <UserCheck className="w-3 h-3 flex-shrink-0" />
+          <span>0</span>
         </Badge>
       )}
     </div>

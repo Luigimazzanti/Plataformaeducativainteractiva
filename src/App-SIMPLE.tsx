@@ -8,9 +8,8 @@ import { AdminDashboard } from "./components/AdminDashboard";
 import { ThemeProvider } from "./utils/ThemeContext";
 import { LanguageProvider, useLanguage } from "./utils/LanguageContext";
 import { Toaster } from "./components/ui/sonner";
-import { enableDemoMode, isDemoMode, demoModeAPI, disableDemoMode } from "./utils/demo-mode";
+import { enableDemoMode, isDemoMode, demoModeAPI } from "./utils/demo-mode";
 import { projectId } from "./utils/api";
-import { publicAnonKey } from "./utils/supabase/info";
 
 function LoadingScreen() {
   const { t } = useLanguage();
@@ -47,70 +46,37 @@ export default function App() {
       return;
     }
 
-    // 🔧 NUEVO: Verificar si el servidor responde antes de intentar autenticar
-    const checkSupabase = async () => {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
-
-        // ✅ ARREGLO: Verificar el endpoint de auth de Supabase (siempre disponible)
-        const response = await window.fetch(
-          `https://${projectId}.supabase.co/auth/v1/health`,
-          { 
-            method: "GET", 
-            signal: controller.signal,
-            headers: {
-              'apikey': publicAnonKey,
+    // Intentar restaurar sesión
+    const token = AuthManager.getToken();
+    if (token) {
+      apiClient.setToken(token);
+      apiClient.getCurrentUser()
+        .then(response => {
+          if (response?.user?.id) {
+            const userData = response.user;
+            AuthManager.saveUserId(userData.id);
+            
+            // Cargar avatar
+            const savedAvatar = localStorage.getItem(`user_avatar_${userData.id}`);
+            if (savedAvatar) {
+              userData.avatar = savedAvatar;
             }
+            
+            console.log('[EduConnect] ✅ Sesión restaurada');
+            setUser(userData);
           }
-        );
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error('Backend no disponible');
-        }
-
-        console.log('[EduConnect] ✅ Supabase conectado correctamente');
-        
-        // ✅ Desactivar modo demo si estaba activo
-        disableDemoMode();
-        
-        // Intentar restaurar sesión
-        const token = AuthManager.getToken();
-        if (token) {
-          apiClient.setToken(token);
-          try {
-            const userResponse = await apiClient.getCurrentUser();
-            if (userResponse?.user?.id) {
-              const userData = userResponse.user;
-              AuthManager.saveUserId(userData.id);
-              
-              // Cargar avatar
-              const savedAvatar = localStorage.getItem(`user_avatar_${userData.id}`);
-              if (savedAvatar) {
-                userData.avatar = savedAvatar;
-              }
-              
-              console.log('[EduConnect] ✅ Sesión restaurada');
-              setUser(userData);
-            }
-          } catch (error) {
-            console.log('[EduConnect] Token inválido, limpiando sesión');
-            AuthManager.clearAll();
-            apiClient.setToken(null);
-          }
-        }
-        
-        setIsLoading(false);
-      } catch (error) {
-        console.log('[EduConnect] ⚠️ Supabase no disponible, activando modo demo');
-        enableDemoMode();
-        setIsLoading(false);
-      }
-    };
-
-    checkSupabase();
+        })
+        .catch(error => {
+          console.log('[EduConnect] Token inválido, limpiando sesión');
+          AuthManager.clearAll();
+          apiClient.setToken(null);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    } else {
+      setIsLoading(false);
+    }
   }, []);
 
   const handleLoginSuccess = (userData: any) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../utils/api';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -8,9 +8,13 @@ import { MySubmissionsView } from './MySubmissionsView';
 import { StudentMaterialsView } from './StudentMaterialsView';
 import { NavigationDropdown } from './NavigationDropdown';
 import { SettingsPanel } from './SettingsPanel';
+import { NotificationCenter } from './NotificationCenter';
 import { useTheme } from '../utils/ThemeContext';
 import { useLanguage } from '../utils/LanguageContext';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { NotificationManager, Notification } from '../utils/notifications';
+import { AuthManager } from '../utils/auth-manager';
+import { toast } from 'sonner@2.0.3';
 
 interface StudentDashboardProps {
   user: any;
@@ -30,10 +34,54 @@ export function StudentDashboard({ user, onLogout, onUpdateProfile }: StudentDas
   });
   const { theme, toggleTheme } = useTheme();
   const { t } = useLanguage();
+  
+  // Ref para rastrear submissions anteriores y detectar cambios
+  const previousSubmissionsRef = useRef<any[]>([]);
+
+  // Usar SIEMPRE el userId guardado en AuthManager para consistencia
+  const userId = AuthManager.getUserId() || user.id;
+  // 🔇 SILENCIAR LOG (comentado)
+  // console.log('🔔 [StudentDashboard] UserId:', {
+  //   fromAuthManager: AuthManager.getUserId(),
+  //   fromUser: user.id,
+  //   usando: userId
+  // });
+  
+  // Estado para contador de feedback nuevo (recalcular cuando cambian submissions)
+  const [newFeedbackCount, setNewFeedbackCount] = useState(0);
+
+  // Recalcular contador cuando cambian las submissions
+  useEffect(() => {
+    const count = NotificationManager.getNewFeedbackCount(userId, submissions);
+    // 🔇 SILENCIAR LOG (comentado)
+    // console.log('🔔 [StudentDashboard] Contador actualizado:', {
+    //   userId,
+    //   count,
+    //   totalSubmissions: submissions.length
+    // });
+    setNewFeedbackCount(count);
+  }, [submissions, userId]);
 
   useEffect(() => {
+    // Debug localStorage al cargar
+    NotificationManager.debugLocalStorage();
+    
     loadData();
+    
+    // Polling cada 30 segundos para verificar nuevas calificaciones
+    const interval = setInterval(() => {
+      checkForNewGrades();
+    }, 30000); // 30 segundos
+
+    return () => clearInterval(interval);
   }, []);
+
+  // Recargar datos cuando cambia a la pestaña de submissions para actualizar contador
+  useEffect(() => {
+    if (activeTab === 'submissions') {
+      loadData();
+    }
+  }, [activeTab]);
 
   const loadData = async () => {
     try {
@@ -44,10 +92,76 @@ export function StudentDashboard({ user, onLogout, onUpdateProfile }: StudentDas
       ]);
       setAssignments(assignmentsRes.assignments || []);
       setSubmissions(submissionsRes.submissions || []);
-    } catch (error) {
-      console.error('Error loading data:', error);
+      
+      // Guardar las submissions actuales para comparar después
+      previousSubmissionsRef.current = submissionsRes.submissions || [];
+    } catch (error: any) {
+      // Solo mostrar error si NO es por falta de sesión (usuario no logueado)
+      if (error?.message !== 'No user logged in') {
+        console.error('Error loading data:', error);
+      }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const checkForNewGrades = async () => {
+    try {
+      const submissionsRes = await apiClient.getMySubmissions();
+      const newSubmissions = submissionsRes.submissions || [];
+      
+      // Comparar con submissions anteriores para detectar nuevas calificaciones
+      const previousSubs = previousSubmissionsRef.current;
+      
+      newSubmissions.forEach((newSub: any) => {
+        const oldSub = previousSubs.find((s: any) => s.id === newSub.id);
+        
+        // Detectar si hay una nueva calificación o feedback
+        const hasNewGrade = oldSub && (
+          (newSub.grade !== null && newSub.grade !== undefined && oldSub.grade !== newSub.grade) ||
+          (newSub.feedback && oldSub.feedback !== newSub.feedback)
+        );
+        
+        if (hasNewGrade) {
+          // Obtener el título de la tarea desde la submission
+          const assignmentTitle = newSub.assignmentTitle || 'Tarea';
+          
+          // Mostrar notificación toast
+          if (newSub.grade !== null && newSub.grade !== undefined) {
+            toast.success(
+              `📝 Nueva calificación: ${assignmentTitle}`,
+              {
+                description: `Has recibido ${newSub.grade} puntos${newSub.feedback ? ' con comentarios' : ''}`,
+                duration: 5000,
+              }
+            );
+          } else if (newSub.feedback) {
+            toast.info(
+              `💬 Nuevo comentario: ${assignmentTitle}`,
+              {
+                description: 'Tu profesor ha dejado un comentario en tu entrega',
+                duration: 5000,
+              }
+            );
+          }
+        }
+      });
+      
+      // Actualizar los datos
+      setSubmissions(newSubmissions);
+      previousSubmissionsRef.current = newSubmissions;
+    } catch (error: any) {
+      // 🔧 Silenciar errores de autenticación en polling (no molestar al usuario)
+      const isAuthError = 
+        error?.message === 'No user logged in' ||
+        error?.message === 'Unauthorized' ||
+        error?.message?.includes('Unauthorized') ||
+        error?.message?.includes('Not authenticated');
+      
+      if (!isAuthError) {
+        console.error('Error checking for new grades:', error);
+      }
+      // Si es error de autenticación, simplemente ignorarlo silenciosamente
     }
   };
 
@@ -71,6 +185,15 @@ export function StudentDashboard({ user, onLogout, onUpdateProfile }: StudentDas
     onUpdateProfile(updates);
   };
 
+  const handleNotificationClick = (notification: Notification) => {
+    console.log('🔔 [StudentDashboard] Navegando desde notificación:', notification);
+    
+    // Navegar según el tipo de notificación
+    if (notification.targetTab) {
+      setActiveTab(notification.targetTab);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gradient-from via-gradient-via to-gradient-to">
       {/* Header */}
@@ -87,6 +210,11 @@ export function StudentDashboard({ user, onLogout, onUpdateProfile }: StudentDas
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 md:gap-4 flex-shrink-0">
+              <NotificationCenter 
+                userRole="student"
+                userId={user.id}
+                onNavigate={handleNotificationClick}
+              />
               <Button
                 variant="ghost"
                 size="icon"
@@ -175,9 +303,20 @@ export function StudentDashboard({ user, onLogout, onUpdateProfile }: StudentDas
         <div className="space-y-6">
           <NavigationDropdown
             items={[
-              { value: 'assignments', label: t('assignments'), icon: FileText, mobileLabel: 'Tareas' },
-              { value: 'materials', label: t('notes'), icon: Book, mobileLabel: 'Material' },
-              { value: 'submissions', label: t('submissions'), icon: Award, mobileLabel: 'Entregas' },
+              { 
+                value: 'assignments', 
+                label: 'Mis Tareas', 
+                icon: FileText, 
+                mobileLabel: 'Mis Tareas'
+              },
+              { value: 'materials', label: 'Mis Materiales', icon: Book, mobileLabel: 'Materiales' },
+              { 
+                value: 'submissions', 
+                label: 'Mis Respuestas', 
+                icon: Award, 
+                mobileLabel: 'Respuestas',
+                badge: newFeedbackCount > 0 ? newFeedbackCount : undefined
+              },
             ]}
             activeValue={activeTab}
             onValueChange={setActiveTab}
@@ -186,8 +325,8 @@ export function StudentDashboard({ user, onLogout, onUpdateProfile }: StudentDas
           {activeTab === 'assignments' && (
             <div className="space-y-6">
             <div className="min-w-0">
-              <h2 className="text-xl sm:text-2xl mb-2 truncate">{t('assignments')}</h2>
-              <p className="text-muted-foreground text-sm truncate">{t('manageTasks')}</p>
+              <h2 className="text-xl sm:text-2xl mb-2 truncate">Mis Tareas</h2>
+              <p className="text-muted-foreground text-sm truncate">Visualiza y completa tus tareas asignadas</p>
             </div>
 
             {isLoading ? (
@@ -234,6 +373,7 @@ export function StudentDashboard({ user, onLogout, onUpdateProfile }: StudentDas
               submissions={submissions} 
               assignments={assignments}
               onRefresh={loadData}
+              userId={userId}
             />
           )}
         </div>

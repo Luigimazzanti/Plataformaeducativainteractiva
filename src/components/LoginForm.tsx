@@ -16,7 +16,9 @@ import { GraduationCap, BookOpen, AlertCircle, Globe } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { useLanguage, Language, languageNames } from '../utils/LanguageContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { isDemoMode, demoModeAPI } from '../utils/demo-mode';
+import { isDemoMode, demoModeAPI, disableDemoMode } from '../utils/demo-mode';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { SupabaseStatus } from './SupabaseStatus';
 
 interface LoginFormProps {
   onLoginSuccess: (user: any) => void;
@@ -27,6 +29,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
   const { t, language, setLanguage } = useLanguage();
+  const [showDiagnostic, setShowDiagnostic] = useState(false);
   
   // Login state
   const [loginEmail, setLoginEmail] = useState('');
@@ -81,8 +84,9 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
         }
       }
 
-      // Clear demo mode flag to try backend first
-      localStorage.removeItem('educonnect_demo_mode');
+      // ✅ IMPORTANTE: Desactivar modo demo temporalmente para intentar conectar a Supabase
+      disableDemoMode();
+      console.log('[Login] 🔄 Intentando conectar a Supabase...');
 
       // Try login through backend API (which handles both real auth and demo credentials)
       const { user, token } = await apiClient.login(loginEmail, loginPassword);
@@ -212,6 +216,24 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gradient-from via-gradient-via to-gradient-to p-4">
       <div className="w-full max-w-md">
+        {/* Demo Mode Banner */}
+        {isDemoMode() && (
+          <Alert className="mb-4 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="text-xs text-amber-800 dark:text-amber-300">
+              <div className="space-y-1">
+                <p className="font-semibold">🔴 MODO DEMO ACTIVO</p>
+                <p className="text-[11px]">
+                  La aplicación funciona sin Supabase. Los datos se guardan localmente.
+                </p>
+                <p className="text-[10px] text-muted-foreground italic">
+                  💡 Para conectar Supabase: actualiza /utils/supabase/info.tsx
+                </p>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <Card className="shadow-xl">
         <CardHeader className="text-center">
           <div className="relative mb-4">
@@ -389,6 +411,23 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
           </Tabs>
         </CardContent>
       </Card>
+      
+      {/* Diagnóstico de Supabase */}
+      <div className="mt-4 text-center">
+        <Dialog open={showDiagnostic} onOpenChange={setShowDiagnostic}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="text-xs">
+              🔧 Diagnóstico de Conexión
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>🔧 Estado de Conexión Supabase</DialogTitle>
+            </DialogHeader>
+            <SupabaseStatus />
+          </DialogContent>
+        </Dialog>
+      </div>
       </div>
     </div>
   );

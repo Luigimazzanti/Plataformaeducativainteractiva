@@ -27,6 +27,8 @@ enable_signup = true
 [edge_functions]
 enabled = true
 port = 54324
+# IMPORTANTE: Deshabilitar verificación JWT para permitir endpoints públicos
+verify_jwt = false
 
 # Note: The actual edge function is located at:
 # supabase/functions/server/

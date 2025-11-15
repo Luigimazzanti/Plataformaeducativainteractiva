@@ -60,13 +60,13 @@ const translations: Record<Language, Record<string, string>> = {
     'myTasks': 'Mis Tareas',
     'manageTasks': 'Administra tus tareas y actividades',
     'loadingTasks': 'Cargando tareas...',
-    'loadingSubmissions': 'Cargando entregas...',
+    'loadingSubmissions': 'Cargando Entregas...',
     'noAssignments': 'No hay tareas creadas',
     'noAssignmentsMessage': 'Comienza creando tu primera tarea para tus estudiantes',
     'createFirstTask': 'Crear Primera Tarea',
     'noAssignedTasks': 'No tienes tareas asignadas',
     'noAssignedTasksMessage': 'Tu profesor aún no te ha asignado ninguna tarea.',
-    'noSubmissions': 'No tienes entregas',
+    'noSubmissions': 'No tienes Entregas',
     'noSubmissionsMessage': 'Aún no has entregado ninguna tarea.',
     
     // Tareas
@@ -90,11 +90,11 @@ const translations: Record<Language, Record<string, string>> = {
     'deleteError': 'Error al eliminar la tarea',
     'createError': 'Error al crear la tarea',
     'grade': 'Calificación',
-    'feedback': 'Retroalimentación',
+    'feedback': 'Feedback',
     'saveGrade': 'Guardar Calificación',
     'gradeStudent': 'Calificar Estudiante',
     'enterGrade': 'Ingresa una calificación (0-100)',
-    'enterFeedback': 'Escribe tu retroalimentación...',
+    'enterFeedback': 'Escribe tu feedback...',
     
     // Tipos de actividades
     'standard': 'Estándar',
@@ -165,7 +165,7 @@ const translations: Record<Language, Record<string, string>> = {
     'assignTaskSuccess': 'Tarea asignada correctamente',
     'unassignTaskSuccess': 'Tarea desasignada correctamente',
     'studentsAssigned': 'estudiantes asignados',
-    'submissions': 'entregas',
+    'submissions': 'Entregas',
     'howAssignmentWorks': '💡 ¿Cómo funciona el sistema de asignaciones?',
     'assignmentStep1': 'Crea una tarea usando el botón "Nueva Tarea"',
     'assignmentStep2': 'Ve a "Todos los Estudiantes" y asigna estudiantes a ti',
@@ -177,7 +177,7 @@ const translations: Record<Language, Record<string, string>> = {
     'studentGrades': 'Calificaciones de Estudiantes',
     'assignmentGrades': 'Calificaciones por Tarea',
     'noGrades': 'No hay calificaciones disponibles',
-    'noGradesMessage': 'Aún no hay entregas calificadas.',
+    'noGradesMessage': 'Aún no hay Entregas calificadas.',
     'points': 'puntos',
     
     // General
@@ -273,7 +273,8 @@ const translations: Record<Language, Record<string, string>> = {
     'errorAssigningTeacher': 'Error al asignar profesor',
     'saving': 'Guardando...',
     'of': 'de',
-    'selectAll': 'Seleccionar Todos',
+    'selectAll': 'Seleccionar todo',
+    'cancelAll': 'Cancelar todo',
     
     // NOTAS / Material Complementario
     'notes': 'Material',
@@ -620,7 +621,8 @@ const translations: Record<Language, Record<string, string>> = {
     'adminLoginHint': 'For admin use: admin / EduConnect@Admin2024',
     'saving': 'Saving...',
     'of': 'of',
-    'selectAll': 'Select All',
+    'selectAll': 'Select all',
+    'cancelAll': 'Cancel all',
     
     // NOTES / Supplementary Material
     'notes': 'Materials',
@@ -957,7 +959,8 @@ const translations: Record<Language, Record<string, string>> = {
     'adminLoginHint': 'Per admin usa: admin / EduConnect@Admin2024',
     'saving': 'Salvataggio...',
     'of': 'di',
-    'selectAll': 'Seleziona Tutti',
+    'selectAll': 'Seleziona tutto',
+    'cancelAll': 'Annulla tutto',
     
     // NOTE / Materiale Supplementare
     'notes': 'Materiale',
@@ -1295,6 +1298,7 @@ const translations: Record<Language, Record<string, string>> = {
     'saving': 'Speichern...',
     'of': 'von',
     'selectAll': 'Alle auswählen',
+    'cancelAll': 'Alle abbrechen',
     
     // NOTIZEN / Ergänzendes Material
     'notes': 'Material',
@@ -1631,6 +1635,7 @@ const translations: Record<Language, Record<string, string>> = {
     'saving': 'Enregistrement...',
     'of': 'de',
     'selectAll': 'Tout sélectionner',
+    'cancelAll': 'Tout annuler',
     
     // NOTES / Matériel Supplémentaire
     'notes': 'Matériel',

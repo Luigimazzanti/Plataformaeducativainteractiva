@@ -45,13 +45,12 @@ export function StudentMaterialsView() {
   const loadMaterials = async () => {
     try {
       setIsLoading(true);
-      const { notes } = await apiClient.getNotes();
-      setMaterials(notes || []);
+      // TODO: Implementar endpoint de materiales
+      // Por ahora, sin materiales disponibles
+      setMaterials([]);
     } catch (error: any) {
-      console.error('Error loading materials:', error);
-      const errorMessage = error?.message || 'Unknown error';
-      console.error('Detailed error:', errorMessage);
-      toast.error(`${t('error')}: ${errorMessage}`);
+      console.log('Materials endpoint not available yet');
+      setMaterials([]);
     } finally {
       setIsLoading(false);
     }

@@ -33,6 +33,9 @@ interface Submission {
   formData?: any;
   grade?: number;
   feedback?: string;
+  status?: 'PENDING' | 'IN_PROGRESS' | 'SUBMITTED' | 'GRADED';
+  content?: any;
+  reviewedAt?: string;
 }
 
 interface Note {
@@ -54,8 +57,114 @@ class DemoModeStorage {
     return item ? JSON.parse(item) : defaultValue;
   }
 
-  private setItem<T>(key: string, value: T): void {
+  private setItem(key: string, value: any) {
     localStorage.setItem(`educonnect_demo_${key}`, JSON.stringify(value));
+  }
+
+  // 🆕 FUNCIÓN PARA LIMPIAR ESPACIO EN LOCALSTORAGE CUANDO SE LLENA
+  private cleanupOldData() {
+    console.log('🧹 [Storage] Limpiando datos antiguos para liberar espacio...');
+    
+    try {
+      // 1. LIMPIAR TODAS LAS ANOTACIONES PDF (son enormes en base64)
+      const pdfKeysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('pdf_annotations_') || 
+            key?.startsWith('annotated_pdf_') || 
+            key?.startsWith('pdf_versions:')) {
+          pdfKeysToRemove.push(key);
+        }
+      }
+      
+      if (pdfKeysToRemove.length > 0) {
+        console.log(`🧹 [Storage] Limpiando ${pdfKeysToRemove.length} archivos PDF del localStorage`);
+        pdfKeysToRemove.forEach(key => localStorage.removeItem(key));
+      }
+      
+      // 2. Mantener SOLO las últimas 10 submissions (eliminar las antiguas)
+      const submissions = this.getSubmissions();
+      
+      // Ordenar por fecha de entrega (más recientes primero)
+      const sortedSubmissions = submissions.sort((a: Submission, b: Submission) => {
+        const dateA = new Date(a.submittedAt).getTime();
+        const dateB = new Date(b.submittedAt).getTime();
+        return dateB - dateA; // Más reciente primero
+      });
+      
+      // Mantener solo las últimas 10
+      const recentSubmissions = sortedSubmissions.slice(0, 10);
+      
+      const removedCount = submissions.length - recentSubmissions.length;
+      if (removedCount > 0) {
+        console.log(`🧹 [Storage] Eliminadas ${removedCount} entregas antiguas (solo se mantienen las últimas 10)`);
+        
+        // IMPORTANTE: Usar setItem directamente aquí, NO setItemSafe (evitar loop infinito)
+        this.setItem('submissions', recentSubmissions);
+      }
+      
+      // 3. Eliminar archivos grandes de las submissions (PDFs en base64)
+      const cleanedSubmissions = recentSubmissions.map((sub: any) => {
+        if (sub.files && Array.isArray(sub.files)) {
+          // Eliminar PDFs en base64 de las submissions, solo mantener metadatos
+          const cleanedFiles = sub.files.map((file: any) => {
+            if (file.url && file.url.length > 10000) {
+              // Si el URL es muy largo (base64), eliminarlo
+              console.log(`🧹 [Storage] Eliminando PDF grande de submission ${sub.id}`);
+              return {
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                url: '[PDF_REMOVED_TO_SAVE_SPACE]' // Marcador
+              };
+            }
+            return file;
+          });
+          return { ...sub, files: cleanedFiles };
+        }
+        return sub;
+      });
+      
+      // Guardar submissions limpias
+      this.setItem('submissions', cleanedSubmissions);
+      console.log('✅ [Storage] Limpieza completada');
+      
+      return true;
+    } catch (error) {
+      console.error('❌ [Storage] Error limpiando datos:', error);
+      return false;
+    }
+  }
+
+  // 🔧 MODIFICAR setItem para manejar errores de cuota automáticamente
+  private setItemSafe(key: string, value: any): boolean {
+    try {
+      localStorage.setItem(`educonnect_demo_${key}`, JSON.stringify(value));
+      return true;
+    } catch (error: any) {
+      if (error.name === 'QuotaExceededError') {
+        console.warn('⚠️ [Storage] Cuota excedida, limpiando espacio...');
+        this.cleanupOldData();
+        
+        // Intentar de nuevo después de limpiar
+        try {
+          localStorage.setItem(`educonnect_demo_${key}`, JSON.stringify(value));
+          console.log('✅ [Storage] Guardado exitoso después de limpieza');
+          return true;
+        } catch (retryError) {
+          console.error('❌ [Storage] Error persistente después de limpieza');
+          throw retryError;
+        }
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  // Reset demo data - for development/testing
+  reset() {
+    localStorage.removeItem('educonnect_demo_initialized');
+    this.initialize();
   }
 
   // Initialize demo data
@@ -110,9 +219,35 @@ class DemoModeStorage {
         },
       ];
 
+      const submissions: Submission[] = [
+        {
+          id: 'demo-submission-1',
+          assignmentId: 'demo-assignment-1',
+          studentId: 'demo-student-1',
+          submittedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          status: 'SUBMITTED',
+          content: {
+            textResponse: 'He completado todos los ejercicios del capítulo 3.',
+          },
+        },
+        {
+          id: 'demo-submission-2',
+          assignmentId: 'demo-assignment-1',
+          studentId: 'demo-student-2',
+          submittedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+          status: 'GRADED',
+          grade: 95,
+          feedback: 'Excelente trabajo, sigue así!',
+          reviewedAt: new Date().toISOString(),
+          content: {
+            textResponse: 'Ejercicios completados correctamente.',
+          },
+        },
+      ];
+
       this.setItem('users', users);
       this.setItem('assignments', assignments);
-      this.setItem('submissions', []);
+      this.setItem('submissions', submissions);
       this.setItem('notes', notes);
       localStorage.setItem('educonnect_demo_initialized', 'true');
     }
@@ -192,7 +327,12 @@ class DemoModeStorage {
   addSubmission(submission: Submission): void {
     const submissions = this.getSubmissions();
     submissions.push(submission);
-    this.setItem('submissions', submissions);
+    this.setItemSafe('submissions', submissions); // 🔧 Usar setItemSafe para auto-limpiar si está lleno
+    
+    // Disparar evento personalizado para notificar a otros componentes
+    window.dispatchEvent(new CustomEvent('submission-added', { 
+      detail: submission 
+    }));
   }
 
   updateSubmission(id: string, updates: Partial<Submission>): void {
@@ -200,7 +340,7 @@ class DemoModeStorage {
     const index = submissions.findIndex(s => s.id === id);
     if (index !== -1) {
       submissions[index] = { ...submissions[index], ...updates };
-      this.setItem('submissions', submissions);
+      this.setItemSafe('submissions', submissions); // 🔧 Usar setItemSafe
     }
   }
 
@@ -232,6 +372,31 @@ class DemoModeStorage {
     const notes = this.getNotes().filter(n => n.id !== id);
     this.setItem('notes', notes);
   }
+
+  // Notification methods
+  getNotifications(): any[] {
+    return this.getItem('notifications', []);
+  }
+
+  addNotification(notification: any): void {
+    const notifications = this.getNotifications();
+    notifications.push(notification);
+    this.setItem('notifications', notifications);
+  }
+
+  updateNotification(id: string, updates: any): void {
+    const notifications = this.getNotifications();
+    const index = notifications.findIndex(n => n.id === id);
+    if (index !== -1) {
+      notifications[index] = { ...notifications[index], ...updates };
+      this.setItem('notifications', notifications);
+    }
+  }
+
+  deleteNotification(id: string): void {
+    const notifications = this.getNotifications().filter(n => n.id !== id);
+    this.setItem('notifications', notifications);
+  }
 }
 
 const storage = new DemoModeStorage();
@@ -242,14 +407,36 @@ export class DemoModeAPI {
 
   constructor() {
     storage.initialize();
+    // Restaurar currentUserId desde localStorage si existe
+    this.restoreCurrentUser();
+  }
+
+  private restoreCurrentUser() {
+    const savedUserId = localStorage.getItem('educonnect_user_id');
+    if (savedUserId) {
+      this.currentUserId = savedUserId;
+      console.log('[DemoMode] ✅ Restaurado currentUserId:', savedUserId);
+    }
   }
 
   setCurrentUser(userId: string) {
     this.currentUserId = userId;
+    // Persistir en localStorage para sobrevivir recargas de página
+    localStorage.setItem('educonnect_user_id', userId);
+    console.log('[DemoMode] ✅ Guardado currentUserId:', userId);
   }
 
   getCurrentUserId(): string {
-    if (!this.currentUserId) throw new Error('No user logged in');
+    // Intentar restaurar si no existe
+    if (!this.currentUserId) {
+      this.restoreCurrentUser();
+    }
+    
+    if (!this.currentUserId) {
+      // Solo log en consola si es para debug, no es un error crítico
+      console.log('[DemoMode] ℹ️ No user logged in (esperado antes de login)');
+      throw new Error('No user logged in');
+    }
     return this.currentUserId;
   }
 
@@ -272,7 +459,7 @@ export class DemoModeAPI {
     if (!user) throw new Error('Usuario no encontrado');
     if (user.blocked) throw new Error('Usuario bloqueado');
 
-    this.currentUserId = user.id;
+    this.setCurrentUser(user.id);
     return { user, token: `demo_token_${user.id}` };
   }
 
@@ -292,7 +479,7 @@ export class DemoModeAPI {
     };
 
     storage.addUser(user);
-    this.currentUserId = user.id;
+    this.setCurrentUser(user.id);
     return { user };
   }
 
@@ -301,6 +488,12 @@ export class DemoModeAPI {
     const user = storage.getUser(this.getCurrentUserId());
     if (!user) throw new Error('Usuario no encontrado');
     return { user };
+  }
+
+  async logout(): Promise<void> {
+    this.currentUserId = null;
+    // La limpieza de localStorage se maneja en AuthManager.clearAll()
+    console.log('[DemoMode] ✅ Sesión cerrada');
   }
 
   // Users
@@ -326,6 +519,11 @@ export class DemoModeAPI {
   async blockUser(userId: string, blocked: boolean): Promise<void> {
     await this.delay(50); // Reduced for faster response
     storage.updateUser(userId, { blocked });
+  }
+
+  async updateUserMetadata(userId: string, metadata: { name?: string; role?: string; avatar?: string }): Promise<void> {
+    await this.delay(50); // Reduced for faster response
+    storage.updateUser(userId, metadata);
   }
 
   async assignTeacherToStudent(teacherId: string, studentId: string): Promise<void> {
@@ -368,14 +566,25 @@ export class DemoModeAPI {
   // Assignments
   async createAssignment(data: any): Promise<{ assignment: Assignment }> {
     await this.delay(100); // Reduced for faster response
+    const teacherId = this.getCurrentUserId();
+    
+    // 🔥 AUTO-ASIGNAR a todos los estudiantes del profesor
+    const allStudents = storage.getUsers().filter(u => 
+      u.role === 'student' && u.teacherIds?.includes(teacherId)
+    );
+    const studentIds = allStudents.map(s => s.id);
+    
     const assignment: Assignment = {
       id: `demo-assignment-${Date.now()}`,
       ...data,
-      teacherId: this.getCurrentUserId(),
+      teacherId,
       createdAt: new Date().toISOString(),
-      assignedStudents: [],
+      assignedStudents: studentIds, // ✅ Asignada automáticamente
     };
     storage.addAssignment(assignment);
+    
+    console.log('✅ [DEMO] Tarea creada y asignada automáticamente a:', studentIds);
+    
     return { assignment };
   }
 
@@ -439,13 +648,86 @@ export class DemoModeAPI {
   // Submissions
   async submitAssignment(data: any): Promise<{ submission: Submission }> {
     await this.delay(100); // Reduced for faster response
+    
+    // 🔧 DEBUG: Ver qué archivos vienen en data.files
+    console.log('[DemoMode] 📄 Creando submission con data:', {
+      hasFiles: !!data.files,
+      filesCount: data.files?.length || 0,
+      files: data.files
+    });
+    
+    // Obtener la tarea original para guardar una copia de sus datos
+    const assignment = storage.getAssignment(data.assignmentId);
+    
+    // Obtener info del estudiante actual
+    const studentId = this.getCurrentUserId();
+    const student = storage.getUser(studentId);
+    
     const submission: Submission = {
       id: `demo-submission-${Date.now()}`,
       ...data,
-      studentId: this.getCurrentUserId(),
+      studentId,
       submittedAt: new Date().toISOString(),
+      status: 'SUBMITTED',
+      // Guardar info del estudiante
+      student: student ? {
+        id: student.id,
+        name: student.name,
+        email: student.email
+      } : undefined,
+      studentName: student?.name,
+      studentEmail: student?.email,
+      // Guardar una copia de los datos de la tarea para mantener independencia
+      assignmentTitle: assignment?.title || 'Tarea sin título',
+      assignmentType: assignment?.type,
+      assignmentDescription: assignment?.description,
+      assignmentQuestions: assignment?.questions,
+      assignmentFiles: assignment?.files,
+      assignmentFormFields: assignment?.formFields,
+      // 🔧 IMPORTANTE: Mantener los archivos del estudiante (PDF anotado)
+      // ya viene en ...data, pero lo resaltamos aquí para claridad
+      files: data.files || [] // PDF anotado del estudiante
     };
+    
+    // 🔧 DEBUG: Ver la submission final antes de guardar
+    console.log('[DemoMode] 💾 Submission final antes de guardar:', {
+      id: submission.id,
+      hasFiles: !!submission.files,
+      filesCount: submission.files?.length || 0,
+      files: submission.files
+    });
+    
     storage.addSubmission(submission);
+    
+    // 🔔 Enviar notificación al profesor
+    if (assignment?.teacherId) {
+      console.log('[DemoMode] 🔔 Enviando notificación al profesor:', assignment.teacherId);
+      const notification = {
+        id: `notif-${Date.now()}`,
+        userId: assignment.teacherId,
+        type: 'submission' as const,
+        title: '🎯 Nueva Entrega Recibida',
+        message: `${student?.name || 'Un estudiante'} entregó "${assignment.title}"`,
+        read: false,
+        createdAt: new Date().toISOString(),
+        assignmentId: assignment.id,
+        submissionId: submission.id
+      };
+      storage.addNotification(notification);
+      console.log('[DemoMode] ✅ Notificación creada:', notification);
+    }
+    
+    // 🔔 Disparar evento para notificaciones en tiempo real
+    console.log('[DemoMode] 🔔 Disparando evento submission-added:', submission);
+    const event = new CustomEvent('submission-added', { 
+      detail: { 
+        assignmentId: data.assignmentId, 
+        submissionId: submission.id,
+        timestamp: new Date().toISOString()
+      } 
+    });
+    window.dispatchEvent(event);
+    
     return { submission };
   }
 
@@ -453,9 +735,22 @@ export class DemoModeAPI {
     await this.delay(30); // Reduced for faster response
     const submissions = storage.getSubmissions().filter(s => s.assignmentId === assignmentId);
     
-    // Enrich with student data
+    // Enrich with student data and assignment data (si no existe ya)
     const enriched = submissions.map(sub => {
       const student = storage.getUser(sub.studentId);
+      
+      // Si la submission no tiene los datos guardados, buscar la tarea
+      if (!sub.assignmentTitle) {
+        const assignment = storage.getAssignment(sub.assignmentId);
+        return {
+          ...sub,
+          studentName: student?.name || 'Unknown',
+          studentEmail: student?.email || 'unknown@demo.com',
+          assignmentTitle: assignment?.title || 'Tarea sin título',
+          assignmentType: assignment?.type,
+        };
+      }
+      
       return {
         ...sub,
         studentName: student?.name || 'Unknown',
@@ -466,17 +761,58 @@ export class DemoModeAPI {
     return { submissions: enriched };
   }
 
+  // 🚀 OPTIMIZACIÓN: Obtener TODAS las submissions de TODAS las tareas de una vez
+  async getAllSubmissions(): Promise<{ submissions: any[] }> {
+    await this.delay(20); // Muy rápido - solo una consulta
+    const teacherId = this.getCurrentUserId();
+    const allAssignments = storage.getAssignments().filter(a => a.createdBy === teacherId);
+    const assignmentIds = allAssignments.map(a => a.id);
+    
+    // Obtener todas las submissions de las tareas del profesor
+    const submissions = storage.getSubmissions().filter(s => 
+      assignmentIds.includes(s.assignmentId)
+    );
+    
+    // Enrich with student and assignment data
+    const enriched = submissions.map(sub => {
+      const student = storage.getUser(sub.studentId);
+      const assignment = allAssignments.find(a => a.id === sub.assignmentId);
+      
+      return {
+        ...sub,
+        studentName: student?.name || 'Unknown',
+        studentEmail: student?.email || 'unknown@demo.com',
+        assignmentTitle: sub.assignmentTitle || assignment?.title || 'Tarea sin título',
+        assignmentType: sub.assignmentType || assignment?.type,
+      };
+    });
+    
+    console.log('🚀 [DemoMode] getAllSubmissions:', {
+      teacherId,
+      assignmentCount: allAssignments.length,
+      submissionCount: enriched.length
+    });
+    
+    return { submissions: enriched };
+  }
+
   async getMySubmissions(): Promise<{ submissions: any[] }> {
     await this.delay(30); // Reduced for faster response
     const studentId = this.getCurrentUserId();
     const submissions = storage.getSubmissions().filter(s => s.studentId === studentId);
     
-    // Enrich with assignment data
+    // Enrich with assignment data (solo si la submission no tiene ya el título guardado)
     const enriched = submissions.map(sub => {
+      // Si la submission ya tiene los datos guardados, no buscar la tarea
+      if (sub.assignmentTitle) {
+        return sub;
+      }
+      
+      // Para submissions antiguas, buscar la tarea y agregar el título
       const assignment = storage.getAssignment(sub.assignmentId);
       return {
         ...sub,
-        assignmentTitle: assignment?.title || 'Unknown',
+        assignmentTitle: assignment?.title || 'Tarea sin título',
       };
     });
     
@@ -485,6 +821,16 @@ export class DemoModeAPI {
 
   async gradeSubmission(submissionId: string, data: { grade: number; feedback: string }): Promise<void> {
     await this.delay(50); // Reduced for faster response
+    storage.updateSubmission(submissionId, data);
+  }
+
+  async getSubmissions(): Promise<any[]> {
+    await this.delay(30);
+    return storage.getSubmissions();
+  }
+
+  async updateSubmission(submissionId: string, data: any): Promise<void> {
+    await this.delay(50);
     storage.updateSubmission(submissionId, data);
   }
 
@@ -572,12 +918,274 @@ export class DemoModeAPI {
     }
   }
 
-  // File upload (mock)
-  async uploadFile(file: File): Promise<{ url: string }> {
-    await this.delay(200); // Reduced for faster response (was 1000ms)
-    // In demo mode, we can't actually upload files
-    // Return a placeholder URL
-    return { url: `demo://file/${file.name}` };
+  // File upload (mock) - returns same format as real API
+  async uploadFile(file: File): Promise<{ name: string; type: string; size: number; url: string }> {
+    await this.delay(200); // Simulate upload time
+    
+    // In demo mode, convert to Data URL for immediate use
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        resolve({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          url: dataUrl,
+        });
+      };
+      
+      reader.onerror = () => {
+        reject(new Error('Error reading file in demo mode'));
+      };
+      
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Notificaciones
+  async getNotifications(): Promise<{ notifications: any[] }> {
+    await this.delay(30);
+    const userId = this.getCurrentUserId();
+    const user = storage.getUser(userId);
+    const role = user?.role || 'student';
+    
+    const key = `notifications:${userId}:${role}`;
+    const stored = localStorage.getItem(key);
+    const notifications = stored ? JSON.parse(stored) : [];
+    
+    // Ordenar por fecha (más recientes primero)
+    const sorted = notifications.sort((a: any, b: any) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    
+    return { notifications: sorted };
+  }
+
+  async createNotification(userId: string, role: string, notification: any): Promise<{ success: boolean; notification: any }> {
+    await this.delay(50);
+    
+    const key = `notifications:${userId}:${role}`;
+    const stored = localStorage.getItem(key);
+    const notifications = stored ? JSON.parse(stored) : [];
+    
+    const newNotification = {
+      ...notification,
+      id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date().toISOString(),
+      read: false,
+      is_read: false,
+    };
+    
+    notifications.unshift(newNotification);
+    
+    // Mantener solo las últimas 50 notificaciones
+    const trimmed = notifications.slice(0, 50);
+    
+    localStorage.setItem(key, JSON.stringify(trimmed));
+    
+    return { success: true, notification: newNotification };
+  }
+
+  async markNotificationsAsRead(notificationIds: string[]): Promise<{ success: boolean; updatedCount: number }> {
+    await this.delay(50);
+    
+    const userId = this.getCurrentUserId();
+    const user = storage.getUser(userId);
+    const role = user?.role || 'student';
+    const key = `notifications:${userId}:${role}`;
+    
+    const stored = localStorage.getItem(key);
+    if (!stored) {
+      return { success: true, updatedCount: 0 };
+    }
+    
+    const notifications = JSON.parse(stored);
+    let updatedCount = 0;
+    
+    const updated = notifications.map((n: any) => {
+      if (notificationIds.includes(n.id) && !n.read) {
+        updatedCount++;
+        return { ...n, read: true, is_read: true };
+      }
+      return n;
+    });
+    
+    localStorage.setItem(key, JSON.stringify(updated));
+    
+    return { success: true, updatedCount };
+  }
+
+  async markAllNotificationsAsRead(): Promise<{ success: boolean; updatedCount: number }> {
+    await this.delay(50);
+    
+    const userId = this.getCurrentUserId();
+    const user = storage.getUser(userId);
+    const role = user?.role || 'student';
+    const key = `notifications:${userId}:${role}`;
+    
+    const stored = localStorage.getItem(key);
+    if (!stored) {
+      return { success: true, updatedCount: 0 };
+    }
+    
+    const notifications = JSON.parse(stored);
+    let updatedCount = 0;
+    
+    const updated = notifications.map((n: any) => {
+      if (!n.read) {
+        updatedCount++;
+        return { ...n, read: true, is_read: true };
+      }
+      return n;
+    });
+    
+    localStorage.setItem(key, JSON.stringify(updated));
+    
+    return { success: true, updatedCount };
+  }
+
+  async deleteNotification(notificationId: string): Promise<{ success: boolean }> {
+    await this.delay(50);
+    
+    const userId = this.getCurrentUserId();
+    const user = storage.getUser(userId);
+    const role = user?.role || 'student';
+    const key = `notifications:${userId}:${role}`;
+    
+    const stored = localStorage.getItem(key);
+    if (!stored) {
+      return { success: true };
+    }
+    
+    const notifications = JSON.parse(stored);
+    const filtered = notifications.filter((n: any) => n.id !== notificationId);
+    
+    localStorage.setItem(key, JSON.stringify(filtered));
+    
+    return { success: true };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // PDF VERSIONING & COLLABORATIVE EDITING (DEMO MODE)
+  // ═══════════════════════════════════════════════════════════════════
+
+  async getPDFVersions(assignmentId: string, studentId: string): Promise<{ versions: any[]; status: string }> {
+    await this.delay(100);
+    
+    const key = `pdf_versions:${assignmentId}:${studentId}`;
+    const stored = localStorage.getItem(key);
+    
+    if (!stored) {
+      // Retornar versión original por defecto
+      return {
+        versions: [],
+        status: 'not_started'
+      };
+    }
+    
+    const data = JSON.parse(stored);
+    return data;
+  }
+
+  async createPDFVersion(data: {
+    assignmentId: string;
+    studentId: string;
+    version: string;
+    annotations: any[];
+    status: string;
+  }): Promise<{ success: boolean; versionId: string }> {
+    await this.delay(100);
+    
+    const versionId = `pdf-ver-${Date.now()}`;
+    const key = `pdf_versions:${data.assignmentId}:${data.studentId}`;
+    
+    // Cargar versiones existentes
+    const existing = await this.getPDFVersions(data.assignmentId, data.studentId);
+    
+    const newVersion = {
+      id: versionId,
+      assignmentId: data.assignmentId,
+      version: data.version,
+      fileUrl: '', // En demo mode no se genera PDF real
+      annotations: data.annotations,
+      createdBy: this.getCurrentUserId(),
+      createdByRole: storage.getUser(this.getCurrentUserId())?.role || 'student',
+      createdAt: new Date().toISOString(),
+      status: data.status,
+    };
+    
+    const versions = [...existing.versions, newVersion];
+    
+    // Actualizar estado del workflow
+    let workflowStatus = 'not_started';
+    if (data.version === 'student' && data.status === 'submitted') {
+      workflowStatus = 'student_submitted';
+    } else if (data.version === 'teacher' && data.status === 'corrected') {
+      workflowStatus = 'teacher_submitted';
+    } else if (data.version === 'student') {
+      workflowStatus = 'student_editing';
+    } else if (data.version === 'teacher') {
+      workflowStatus = 'teacher_correcting';
+    }
+    
+    localStorage.setItem(key, JSON.stringify({
+      versions,
+      status: workflowStatus
+    }));
+    
+    console.log('✅ [DemoMode] PDF version created:', newVersion);
+    
+    return { success: true, versionId };
+  }
+
+  async updatePDFVersion(versionId: string, data: {
+    annotations?: any[];
+    status?: string;
+  }): Promise<{ success: boolean }> {
+    await this.delay(100);
+    
+    // Buscar la versión en todas las combinaciones de assignment/student
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('pdf_versions:'));
+    
+    for (const key of keys) {
+      const stored = localStorage.getItem(key);
+      if (!stored) continue;
+      
+      const versionData = JSON.parse(stored);
+      const versionIndex = versionData.versions.findIndex((v: any) => v.id === versionId);
+      
+      if (versionIndex !== -1) {
+        // Actualizar la versión
+        if (data.annotations) {
+          versionData.versions[versionIndex].annotations = data.annotations;
+        }
+        if (data.status) {
+          versionData.versions[versionIndex].status = data.status;
+        }
+        
+        localStorage.setItem(key, JSON.stringify(versionData));
+        console.log('✅ [DemoMode] PDF version updated:', versionId);
+        return { success: true };
+      }
+    }
+    
+    return { success: false };
+  }
+
+  async getPDFWorkflowStatus(assignmentId: string, studentId: string): Promise<{ status: string }> {
+    await this.delay(50);
+    
+    const key = `pdf_versions:${assignmentId}:${studentId}`;
+    const stored = localStorage.getItem(key);
+    
+    if (!stored) {
+      return { status: 'not_started' };
+    }
+    
+    const data = JSON.parse(stored);
+    return { status: data.status || 'not_started' };
   }
 
   // Utility
@@ -609,4 +1217,10 @@ export const isDemoCredentials = () => {
   const users = new DemoModeStorage().getUsers();
   const user = users.find(u => u.id === currentUserId);
   return user ? demoEmails.includes(user.email) : false;
+};
+
+// Reset demo data - useful for development/testing
+export const resetDemoData = () => {
+  storage.reset();
+  console.log('[EduConnect] ✅ Demo data has been reset');
 };

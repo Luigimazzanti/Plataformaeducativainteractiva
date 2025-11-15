@@ -2,19 +2,21 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '../utils/api';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Plus, FileText, Users, BarChart3, LogOut, Video, Upload, Settings, Sun, Moon, Sparkles } from 'lucide-react';
+import { Plus, FileText, Users, BarChart3, LogOut, Upload, Settings, Sun, Moon, Sparkles } from 'lucide-react';
+import { NotificationManager, Notification } from '../utils/notifications';
 import { CreateAssignmentDialog } from './CreateAssignmentDialog';
+import { QuestionGeneratorDialog } from './QuestionGeneratorDialog';
 import { AssignmentCard } from './AssignmentCard';
-import { StudentsView } from './StudentsView';
 import { MyStudentsWithTasks } from './MyStudentsWithTasks';
-import { GradesView } from './GradesView';
+import { ImprovedGradesView } from './ImprovedGradesView';
 import { SettingsPanel } from './SettingsPanel';
 import { TeacherMaterialsView } from './TeacherMaterialsView';
 import { NavigationDropdown } from './NavigationDropdown';
-import { QuestionGeneratorDialog } from './QuestionGeneratorDialog';
+import { NotificationCenter } from './NotificationCenter';
 import { useTheme } from '../utils/ThemeContext';
 import { useLanguage } from '../utils/LanguageContext';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { toast } from 'sonner@2.0.3';
 
 interface TeacherDashboardProps {
   user: any;
@@ -27,6 +29,7 @@ export function TeacherDashboard({ user, onLogout, onUpdateProfile }: TeacherDas
   const [assignments, setAssignments] = useState<any[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isQuestionGeneratorOpen, setIsQuestionGeneratorOpen] = useState(false);
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [userProfile, setUserProfile] = useState({
@@ -34,13 +37,46 @@ export function TeacherDashboard({ user, onLogout, onUpdateProfile }: TeacherDas
     avatar: user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`
   });
   const [myStudentsCount, setMyStudentsCount] = useState(0);
+  const [newSubmissionsCount, setNewSubmissionsCount] = useState(0);
   const { theme, toggleTheme } = useTheme();
   const { t } = useLanguage();
 
   useEffect(() => {
-    loadAssignments();
-    loadStudentsCount();
+    // 🚀 OPTIMIZACIÓN: Cargar TODO en paralelo
+    Promise.all([
+      loadAssignments(),
+      loadStudentsCount(),
+      loadNewSubmissionsCount()
+    ]).catch(err => {
+      console.error('Error inicial:', err);
+    });
+
+    // ❌ ELIMINADO: Auto-refresh agresivo que saturaba la DB
+    // ✅ SOLO REACCIONAR A EVENTOS (no polling constante)
+
+    // 🔔 Escuchar eventos custom (entregas en la misma pestaña)
+    const handleSubmissionAdded = (e: CustomEvent) => {
+      console.log('🔔 [TeacherDashboard] Nueva entrega detectada!', e.detail);
+      loadNewSubmissionsCount();
+      toast.success('📬 Nueva entrega recibida', {
+        description: 'Revisa la sección de Calificaciones',
+        duration: 5000,
+      });
+    };
+
+    window.addEventListener('submission-added', handleSubmissionAdded as EventListener);
+
+    return () => {
+      window.removeEventListener('submission-added', handleSubmissionAdded as EventListener);
+    };
   }, []);
+
+  useEffect(() => {
+    // Recargar contador cuando cambie a la pestaña de calificaciones
+    if (activeTab === 'grades') {
+      loadNewSubmissionsCount();
+    }
+  }, [activeTab]);
 
   const loadStudentsCount = async () => {
     try {
@@ -49,6 +85,31 @@ export function TeacherDashboard({ user, onLogout, onUpdateProfile }: TeacherDas
     } catch (error) {
       console.error('Error loading students count:', error);
     }
+  };
+
+  const loadNewSubmissionsCount = async () => {
+    try {
+      // 🚀 OPTIMIZACIÓN CRÍTICA: Usar getAllTeacherSubmissions() en lugar de loop
+      const { submissions: allSubs } = await apiClient.getAllTeacherSubmissions();
+      
+      const viewedSubmissions = NotificationManager.getViewedSubmissions();
+      const newCount = (allSubs || []).filter((sub) => !viewedSubmissions.has(sub.id)).length;
+      
+      setNewSubmissionsCount(newCount);
+    } catch (error: any) {
+      // 🔧 Silenciar COMPLETAMENTE - mantener contador actual
+    }
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+    console.log('🔔 [TeacherDashboard] Navegando desde notificación:', notification);
+    
+    // Navegar según el tipo de notificación
+    if (notification.targetTab) {
+      setActiveTab(notification.targetTab);
+    }
+    
+    // Puedes agregar lógica adicional aquí si necesitas scroll o abrir diálogos específicos
   };
 
   const loadAssignments = async () => {
@@ -68,21 +129,23 @@ export function TeacherDashboard({ user, onLogout, onUpdateProfile }: TeacherDas
       await apiClient.createAssignment(assignmentData);
       await loadAssignments();
       setIsCreateDialogOpen(false);
+      toast.success(t('assignmentCreated') || '✅ Tarea creada exitosamente');
     } catch (error) {
       console.error('Error creating assignment:', error);
-      alert(t('createError'));
+      toast.error(t('createError') || '❌ Error al crear la tarea');
     }
   };
 
   const handleDeleteAssignment = async (id: string) => {
-    if (!confirm(t('confirmDelete'))) return;
+    if (!window.confirm(t('confirmDelete') || '¿Eliminar esta tarea?')) return;
     
     try {
       await apiClient.deleteAssignment(id);
       await loadAssignments();
+      toast.success('🗑️ Tarea eliminada');
     } catch (error) {
       console.error('Error deleting assignment:', error);
-      alert(t('deleteError'));
+      toast.error(t('deleteError') || '❌ Error al eliminar');
     }
   };
 
@@ -107,6 +170,11 @@ export function TeacherDashboard({ user, onLogout, onUpdateProfile }: TeacherDas
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 md:gap-4 flex-shrink-0">
+              <NotificationCenter 
+                userRole="teacher"
+                userId={user.id}
+                onNavigate={handleNotificationClick}
+              />
               <Button
                 variant="ghost"
                 size="icon"
@@ -157,7 +225,14 @@ export function TeacherDashboard({ user, onLogout, onUpdateProfile }: TeacherDas
               { value: 'assignments', label: t('assignments'), icon: FileText, mobileLabel: 'Tareas' },
               { value: 'materials', label: t('notes'), icon: Upload, mobileLabel: 'Material' },
               { value: 'my-students', label: t('myStudents'), icon: Users, mobileLabel: 'Mis Estudiantes' },
-              { value: 'grades', label: t('grades'), icon: BarChart3, mobileLabel: 'Notas' },
+              { 
+                value: 'grades', 
+                label: t('grades'), 
+                icon: BarChart3, 
+                mobileLabel: 'Notas',
+                badge: newSubmissionsCount > 0 ? newSubmissionsCount : undefined,
+                pulseBadge: newSubmissionsCount > 0
+              },
             ]}
             activeValue={activeTab}
             onValueChange={setActiveTab}
@@ -294,7 +369,13 @@ export function TeacherDashboard({ user, onLogout, onUpdateProfile }: TeacherDas
           )}
 
           {activeTab === 'grades' && (
-            <GradesView assignments={assignments} />
+            <ImprovedGradesView 
+              assignments={assignments} 
+              onViewSubmission={() => {
+                // Recargar contador cuando se vea una submission
+                loadNewSubmissionsCount();
+              }}
+            />
           )}
         </div>
       </main>
@@ -305,21 +386,16 @@ export function TeacherDashboard({ user, onLogout, onUpdateProfile }: TeacherDas
         onSubmit={handleCreateAssignment}
       />
 
+      <QuestionGeneratorDialog
+        open={isQuestionGeneratorOpen}
+        onOpenChange={setIsQuestionGeneratorOpen}
+      />
+
       <SettingsPanel
         open={isSettingsOpen}
         onOpenChange={setIsSettingsOpen}
         userProfile={userProfile}
         onUpdateProfile={handleProfileUpdate}
-      />
-
-      <QuestionGeneratorDialog
-        open={isQuestionGeneratorOpen}
-        onOpenChange={setIsQuestionGeneratorOpen}
-        onQuestionsGenerated={(questions) => {
-          console.log('Preguntas generadas:', questions);
-          // Aquí puedes hacer lo que quieras con las preguntas
-          // Por ejemplo, mostrarlas o usarlas para crear una tarea
-        }}
       />
     </div>
   );

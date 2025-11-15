@@ -10,6 +10,7 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { DynamicForm } from './DynamicForm';
+import { toast } from 'sonner@2.0.3';
 
 interface GradesViewProps {
   assignments: any[];
@@ -59,10 +60,10 @@ export function GradesView({ assignments }: GradesViewProps) {
       setGradingSubmission(null);
       setGrade('');
       setFeedback('');
-      alert('Calificación guardada exitosamente');
+      toast.success('✅ Calificación guardada exitosamente');
     } catch (error) {
       console.error('Error grading submission:', error);
-      alert('Error al guardar la calificación');
+      toast.error('❌ Error al guardar la calificación');
     }
   };
 
@@ -151,9 +152,9 @@ export function GradesView({ assignments }: GradesViewProps) {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Award className="w-16 h-16 text-gray-400 mb-4" />
-                <h3 className="text-xl mb-2">No hay entregas</h3>
+                <h3 className="text-xl mb-2">No hay Entregas</h3>
                 <p className="text-gray-600 text-center">
-                  Las entregas aparecerán aquí cuando los estudiantes completen la tarea
+                  Las Entregas aparecerán aquí cuando los estudiantes completen la tarea
                 </p>
               </CardContent>
             </Card>
@@ -269,7 +270,7 @@ export function GradesView({ assignments }: GradesViewProps) {
                     </div>
                     {viewingSubmission.feedback && (
                       <div className="mt-3">
-                        <span className="font-medium">Retroalimentación:</span>
+                        <span className="font-medium">Feedback:</span>
                         <p className="text-sm mt-1">{viewingSubmission.feedback}</p>
                       </div>
                     )}
@@ -287,7 +288,7 @@ export function GradesView({ assignments }: GradesViewProps) {
           <DialogHeader>
             <DialogTitle>Calificar Entrega de {gradingSubmission?.studentName}</DialogTitle>
             <DialogDescription>
-              Asigna una calificación y proporciona retroalimentación opcional
+              Asigna una calificación y proporciona feedback opcional
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -304,7 +305,7 @@ export function GradesView({ assignments }: GradesViewProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="feedback">Retroalimentación (opcional)</Label>
+              <Label htmlFor="feedback">Feedback (opcional)</Label>
               <Textarea
                 id="feedback"
                 value={feedback}

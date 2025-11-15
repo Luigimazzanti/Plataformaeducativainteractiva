@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Calendar, Trash2, Eye, FileText, Video, ClipboardList, Gamepad2, Users } from 'lucide-react';
+import { Calendar, Trash2, Eye, FileText, Video, ClipboardList, Gamepad2, Users, Pencil } from 'lucide-react';
 import { AssignmentDetailDialog } from './AssignmentDetailDialog';
 import { AssignTaskDialog } from './AssignTaskDialog';
 import { AssignmentStatsCard } from './AssignmentStatsCard';
+import { EditAssignmentDialog } from './EditAssignmentDialog';
 
 interface AssignmentCardProps {
   assignment: any;
@@ -13,16 +14,21 @@ interface AssignmentCardProps {
   onDelete?: (id: string) => void;
   onSubmissionComplete?: () => void;
   onAssignmentUpdated?: () => void;
+  currentUser?: any; // ✅ NUEVO
 }
 
-export function AssignmentCard({ assignment, isTeacher, onDelete, onSubmissionComplete, onAssignmentUpdated }: AssignmentCardProps) {
+export function AssignmentCard({ assignment, isTeacher, onDelete, onSubmissionComplete, onAssignmentUpdated, currentUser }: AssignmentCardProps) {
   const [showDetail, setShowDetail] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
   const isOverdue = assignment.dueDate && new Date(assignment.dueDate) < new Date();
 
   const getTypeIcon = () => {
     switch (assignment.type) {
+      case 'ia-quiz':
+      case 'ai-generated':
+        return <FileText className="w-5 h-5 text-[#84cc16]" />;
       case 'interactive':
         return <Gamepad2 className="w-5 h-5" />;
       case 'form':
@@ -36,6 +42,9 @@ export function AssignmentCard({ assignment, isTeacher, onDelete, onSubmissionCo
 
   const getTypeBadge = () => {
     switch (assignment.type) {
+      case 'ia-quiz':
+      case 'ai-generated':
+        return <Badge className="bg-[#84cc16] text-white border-0">Generado con IA</Badge>;
       case 'interactive':
         return <Badge className="bg-gradient-to-r from-primary to-secondary text-white border-0">Interactivo</Badge>;
       case 'form':
@@ -47,9 +56,12 @@ export function AssignmentCard({ assignment, isTeacher, onDelete, onSubmissionCo
     }
   };
 
+  // Calcular si hay entregas nuevas sin revisar
+  const hasNewSubmissions = isTeacher && assignment.newSubmissionsCount > 0;
+
   return (
     <>
-      <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setShowDetail(true)}>
+      <Card className="hover:shadow-lg transition-shadow cursor-pointer relative" onClick={() => setShowDetail(true)}>
         <CardHeader>
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-start gap-2 min-w-0 flex-1">
@@ -68,25 +80,36 @@ export function AssignmentCard({ assignment, isTeacher, onDelete, onSubmissionCo
           </div>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-4 break-words">{assignment.description}</p>
+          <p className="text-sm text-muted-foreground line-clamp-1 mb-4 break-words">{assignment.description}</p>
           
-          <div className="flex flex-wrap gap-2 mb-4">
-            {getTypeBadge()}
-            {assignment.dueDate && (
-              <Badge variant={isOverdue ? 'destructive' : 'outline'} className="text-xs">
+          {/* Badges en una sola línea SIEMPRE */}
+          <div className="flex gap-2 items-center mb-4 overflow-x-auto whitespace-nowrap">
+            {/* Badge de tipo */}
+            <div className="flex-shrink-0">
+              {getTypeBadge()}
+            </div>
+            
+            {/* Badge de fecha */}
+            {assignment.dueDate ? (
+              <Badge variant={isOverdue ? 'destructive' : 'outline'} className="text-xs flex-shrink-0">
                 <Calendar className="w-3 h-3 mr-1" />
-                <span className="hidden sm:inline">{new Date(assignment.dueDate).toLocaleDateString('es-ES')}</span>
-                <span className="sm:hidden">{new Date(assignment.dueDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
+                <span>{new Date(assignment.dueDate).toLocaleDateString('es-ES')}</span>
               </Badge>
+            ) : null}
+            
+            {/* Stats */}
+            {isTeacher && (
+              <div className="flex-shrink-0">
+                <AssignmentStatsCard assignment={assignment} />
+              </div>
             )}
-            {isTeacher && <AssignmentStatsCard assignment={assignment} />}
           </div>
 
           <div className="flex flex-wrap gap-2">
             <Button 
               variant="default" 
               size="sm" 
-              className="flex-1 min-w-[120px]"
+              className="flex-1 min-w-[90px]"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowDetail(true);
@@ -97,6 +120,18 @@ export function AssignmentCard({ assignment, isTeacher, onDelete, onSubmissionCo
             </Button>
             {isTeacher && (
               <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowEditDialog(true);
+                  }}
+                  title="Editar tarea"
+                  className="flex-shrink-0"
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -134,15 +169,33 @@ export function AssignmentCard({ assignment, isTeacher, onDelete, onSubmissionCo
         onOpenChange={setShowDetail}
         isTeacher={isTeacher}
         onSubmissionComplete={onSubmissionComplete}
+        currentUser={currentUser}
       />
 
       {isTeacher && (
-        <AssignTaskDialog
-          assignment={assignment}
-          open={showAssignDialog}
-          onOpenChange={setShowAssignDialog}
-          onAssignmentUpdated={onAssignmentUpdated}
-        />
+        <>
+          <AssignTaskDialog
+            assignment={assignment}
+            open={showAssignDialog}
+            onOpenChange={setShowAssignDialog}
+            onAssignmentUpdated={onAssignmentUpdated}
+          />
+          
+          <EditAssignmentDialog
+            assignment={assignment}
+            open={showEditDialog}
+            onOpenChange={setShowEditDialog}
+            onSubmit={async (id, data) => {
+              // Llamar al API para actualizar la tarea
+              const { apiClient } = await import('../utils/api');
+              await apiClient.updateAssignment(id, data);
+              // Notificar al componente padre
+              if (onAssignmentUpdated) {
+                onAssignmentUpdated();
+              }
+            }}
+          />
+        </>
       )}
     </>
   );

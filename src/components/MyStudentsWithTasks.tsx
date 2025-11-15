@@ -4,7 +4,7 @@ import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Users, Mail, UserPlus, FileText, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { ScrollArea } from './ui/scroll-area';
@@ -42,8 +42,16 @@ export function MyStudentsWithTasks() {
       ]);
       setStudents(studentsRes.students || []);
       setAssignments(assignmentsRes.assignments || []);
-    } catch (error) {
-      console.error('Error loading data:', error);
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Unknown error';
+      // Solo mostrar error si NO es por "No user logged in" (modo demo)
+      if (errorMessage !== 'No user logged in') {
+        console.error('Error loading data:', error);
+      } else {
+        console.log('Demo mode - no students available yet');
+        setStudents([]);
+        setAssignments([]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -69,7 +77,8 @@ export function MyStudentsWithTasks() {
     setShowAssignDialog(true);
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | undefined) => {
+    if (!name || typeof name !== 'string') return '??';
     return name
       .split(' ')
       .map((n) => n[0])
@@ -102,7 +111,7 @@ export function MyStudentsWithTasks() {
           : [...prev, assignmentId]
       );
       
-      toast.success(isCurrentlyAssigned ? 'Tarea desasignada' : 'Tarea asignada');
+      toast.success(isCurrentlyAssigned ? '✅ Tarea desasignada correctamente' : '✅ Tarea asignada correctamente');
     } catch (error) {
       console.error('Error toggling assignment:', error);
       toast.error('Error al actualizar asignación');
@@ -193,8 +202,11 @@ export function MyStudentsWithTasks() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              Tareas para {selectedStudent?.name}
+              📚 Tareas para {selectedStudent?.name}
             </DialogTitle>
+            <DialogDescription>
+              Asigna o desasigna tareas a este estudiante. Las tareas funcionan como plantillas que puedes asignar múltiples veces.
+            </DialogDescription>
           </DialogHeader>
 
           {assignments.length === 0 ? (
@@ -214,23 +226,54 @@ export function MyStudentsWithTasks() {
                   return (
                     <div
                       key={assignment.id}
-                      className={`flex items-center justify-between p-4 border rounded-lg hover:bg-accent cursor-pointer ${
-                        isAssigned ? 'bg-green-50 border-green-200' : ''
+                      className={`flex items-center justify-between p-4 border rounded-lg ${
+                        isAssigned ? 'bg-green-50 border-green-200' : 'hover:bg-accent'
                       }`}
-                      onClick={() => handleAssignmentToggle(assignment.id)}
                     >
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-5 h-5 text-primary" />
+                      <div className="flex items-center gap-3 flex-1">
+                        <FileText className={`w-5 h-5 ${isAssigned ? 'text-green-600' : 'text-primary'}`} />
                         <div>
                           <p>{assignment.title}</p>
+                          {isAssigned && (
+                            <Badge variant="default" className="gap-1 mt-1 text-[10px]">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Ya asignada
+                            </Badge>
+                          )}
                         </div>
                       </div>
-                      {isAssigned && (
-                        <Badge variant="default" className="gap-1">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Asignada
-                        </Badge>
-                      )}
+                      <div className="flex gap-2">
+                        {isAssigned ? (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAssignmentToggle(assignment.id)}
+                              className="border-green-500 text-green-700 hover:bg-green-50"
+                            >
+                              <UserPlus className="w-4 h-4 mr-1" />
+                              Asignar de nuevo
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleAssignmentToggle(assignment.id)}
+                            >
+                              <UserPlus className="w-4 h-4 mr-1" />
+                              Desasignar
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleAssignmentToggle(assignment.id)}
+                          >
+                            <UserPlus className="w-4 h-4 mr-1" />
+                            Asignar
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
