@@ -22,7 +22,11 @@ import {
   Video
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { PDFAnnotator } from './PDFAnnotator';
+// <--- CAMBIO 1: Importar el editor correcto --- >
+// Se elimina el antiguo PDFAnnotator
+// import { PDFAnnotator } from './PDFAnnotator'; 
+import { FullScreenPDFEditor } from './FullScreenPDFEditor';
+// <--- FIN CAMBIO 1 --- >
 import { InteractiveActivityRenderer } from './InteractiveActivityRenderer';
 import { AIQuizRenderer } from './AIQuizRenderer';
 import { apiClient } from '../utils/api';
@@ -44,6 +48,9 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
   // Estado para revisión
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
+  // <--- CAMBIO 2: Nuevo estado para el editor de PDF --- >
+  const [showPDFEditor, setShowPDFEditor] = useState(false);
+  // <--- FIN CAMBIO 2 --- >
   const [gradeValue, setGradeValue] = useState('');
   const [feedback, setFeedback] = useState('');
 
@@ -218,6 +225,7 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
     return assignments.find((a) => a.id === assignmentId);
   };
 
+  // <--- CAMBIO 3: Lógica de apertura modificada --- >
   const handleOpenReview = (submission: any) => {
     console.log('[SubmissionsInbox] 🔍 Abriendo revisión:', {
       submissionId: submission.id,
@@ -227,11 +235,21 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
       currentAssignments: assignments.length
     });
 
-    setSelectedSubmission(submission);
-    setGradeValue(submission.grade?.toString() || '');
-    setFeedback(submission.feedback || '');
-    setShowReviewDialog(true);
+    const assignment = getAssignment(submission.assignmentId);
+    
+    // Si es un PDF, usa el editor de pantalla completa
+    if (assignment?.type === 'pdf' && assignment.fileUrl) {
+      setSelectedSubmission(submission);
+      setShowPDFEditor(true); // <--- Usa el nuevo estado
+    } else {
+      // Para todo lo demás, usa el diálogo modal
+      setSelectedSubmission(submission);
+      setGradeValue(submission.grade?.toString() || '');
+      setFeedback(submission.feedback || '');
+      setShowReviewDialog(true); // <--- Usa el estado antiguo
+    }
   };
+  // <--- FIN CAMBIO 3 --- >
 
   const handleGradeSubmit = async (grade: number, feedbackText: string) => {
     if (!selectedSubmission) return;
@@ -286,6 +304,10 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
         return <ClipboardList className="w-5 h-5" />;
       case 'video':
         return <Video className="w-5 h-5" />;
+      // <--- CAMBIO 4: Añadir caso para PDF --- >
+      case 'pdf':
+        return <FileText className="w-5 h-5 text-red-500" />;
+      // <--- FIN CAMBIO 4 --- >
       default:
         return <FileText className="w-5 h-5" />;
     }
@@ -304,6 +326,10 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
         return <Badge variant="secondary">Formulario</Badge>;
       case 'video':
         return <Badge variant="secondary">Video</Badge>;
+      // <--- CAMBIO 5: Añadir caso para PDF --- >
+      case 'pdf':
+        return <Badge className="bg-red-500 text-white border-0">PDF Interactivo</Badge>;
+      // <--- FIN CAMBIO 5 --- >
       default:
         return <Badge variant="secondary">Estándar</Badge>;
     }
@@ -338,7 +364,9 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
       type: assignment.type
     });
 
-    // PDF
+    // <--- CAMBIO 6: Eliminar la sección de PDF de aquí --- >
+    // El PDF ahora se maneja en FullScreenPDFEditor
+    /*
     if (assignment.type === 'pdf' && assignment.fileUrl) {
       return (
         <PDFAnnotator
@@ -353,6 +381,8 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
         />
       );
     }
+    */
+    // <--- FIN CAMBIO 6 --- >
 
     // Actividad Interactiva
     if (assignment.type === 'interactive' && assignment.content) {
@@ -425,6 +455,30 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-5xl mx-auto">
+      
+      {/* <--- CAMBIO 7: Añadir el render del editor de PDF --- > */}
+      {showPDFEditor && selectedSubmission && (
+        <FullScreenPDFEditor
+          assignmentId={selectedSubmission.assignmentId}
+          assignmentTitle={getAssignmentTitle(selectedSubmission)}
+          pdfUrl={getAssignment(selectedSubmission.assignmentId)?.fileUrl} // Obtenemos la URL original
+          userRole="teacher" // El que revisa es el profesor
+          userId={teacherId} // ID del profesor
+          userName="Profesor" // (Se puede pasar el nombre real del profesor aquí si se tiene)
+          onClose={() => {
+            setShowPDFEditor(false);
+            setSelectedSubmission(null);
+            loadSubmissions(); // Recarga la lista al cerrar
+          }}
+          // --- Props Clave para que funcione la magia ---
+          viewingStudentId={selectedSubmission.studentId} // <-- ID del estudiante (para cargar sus anotaciones)
+          submissionId={selectedSubmission.id} // <-- ID de la entrega (para bloquear/calificar)
+          isLocked={selectedSubmission.isLocked || false} // <-- Estado de bloqueo
+          isGraded={selectedSubmission.status === 'GRADED'} // <-- Estado de calificación
+        />
+      )}
+      {/* <--- FIN CAMBIO 7 --- > */}
+
       {/* Header con contador */}
       <div className="flex items-center justify-center gap-4 flex-wrap">
         <div className="min-w-0 text-center">
@@ -568,7 +622,7 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
         </div>
       )}
 
-      {/* Diálogo de revisión */}
+      {/* Diálogo de revisión (AHORA SOLO PARA TAREAS QUE NO SON PDF) */}
       <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
         <DialogContent className="max-w-[95vw] sm:max-w-6xl h-[90vh] p-0 overflow-hidden flex flex-col">
           <DialogHeader className="px-4 sm:px-6 py-3 sm:py-4 border-b">
