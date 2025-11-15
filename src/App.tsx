@@ -1,9 +1,8 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  APP.TSX - RECOMPILACION NUCLEAR V9.7                                 ║
- * ║  FIX: CORRECCIÓN FINAL                                                ║
- * ║       'apiClient.getSelf' -> 'AuthManager.getUserId()'              ║
- * ║       y luego 'apiClient.getUserProfile(userId)'                      ║
+ * ║  APP.TSX - V10.2 (LA SOLUCIÓN DEFINITIVA)                             ║
+ * ║  FIX: Corregido el error 'getUserProfile is not a function'           ║
+ * ║       Usando 'apiClient.validateToken(token)' que SÍ existe.          ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -88,23 +87,21 @@ export default function App() {
         localStorage.setItem('educonnect_demo_mode', 'true');
       }
 
-      // <--- ESTE ES EL ARREGLO --- >
-      // 1. Obtener el ID de usuario guardado
-      const userId = AuthManager.getUserId();
-      if (!userId) {
-        console.log('No User ID found, limpiando...');
-        AuthManager.clearAll();
-        setIsLoading(false);
-        return;
-      }
-
-      console.log('User ID encontrado, buscando perfil:', userId);
-      // 2. Usar la función CORRECTA con el userId
-      const { user } = await apiClient.getUserProfile(userId); 
+      // <--- ESTE ES EL ARREGLO DEFINITIVO --- >
+      // 1. Ya no buscamos userId, solo pasamos el token
+      // 2. Usamos 'validateToken(token)' que SÍ existe en api.ts
+      
+      // const userId = AuthManager.getUserId(); // <-- YA NO ES NECESARIO
+      // const { user } = await apiClient.getUserProfile(userId); // <-- INCORRECTO
+      
+      const { user } = await apiClient.validateToken(token); // <-- ¡CORRECTO!
+      
       // <--- FIN DEL ARREGLO --- >
       
       if (user) {
         console.log('Usuario válido encontrado:', user.role);
+        // Guardamos el ID de usuario aquí para asegurar que exista
+        AuthManager.saveUserId(user.id);
         setUser(user);
         setView(user.role === 'admin' ? 'admin-users' : 'dashboard');
       } else {
@@ -206,7 +203,7 @@ export default function App() {
             onNavigate={setView}
           />
         ) : (
-          <StudentDashboard user={memoizedUser} onNavigate={setView} />
+          <StudentDashboard user={memoidUser} onNavigate={setView} />
         );
       case 'assignments':
         return <MyStudentsWithTasks viewMode="assignments" teacherId={memoizedUser.id} />;
@@ -286,7 +283,7 @@ export default function App() {
           />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{memoizedUser.name || memoizedUser.email}</p>
-            <p className="text-xs text-muted-foreground capitalize">{t(role)}</p>
+            <p className="text-xs text-muted-foreground capitalize">{t(role)}</D</p>
           </div>
         </div>
         <Button variant="outline" className="w-full" onClick={handleLogout}>
