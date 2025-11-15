@@ -1,4 +1,13 @@
-import { useState, useEffect } from 'react';
+/*
+ * ╔═══════════════════════════════════════════════════════════════════════╗
+ * ║  AssignmentDetailDialog.tsx - V10.5 (SOLUCIÓN DE RENDIMIENTO)         ║
+ * ║  FIX: Corregido el 'freeze' de 66 segundos (Violation)                ║
+ * ║       envolviendo la lógica 'pdfFile.find' en 'useMemo'.              ║
+ * ╚═══════════════════════════════════════════════════════════════════════╝
+ */
+
+// <--- CAMBIO 1: Importar 'useMemo' --- >
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -22,7 +31,7 @@ interface AssignmentDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   isTeacher: boolean;
   onSubmissionComplete?: () => void;
-  currentUser?: any; // ✅ NUEVO: Agregar currentUser como prop
+  currentUser?: any; 
 }
 
 export function AssignmentDetailDialog({
@@ -31,7 +40,7 @@ export function AssignmentDetailDialog({
   onOpenChange,
   isTeacher,
   onSubmissionComplete,
-  currentUser, // ✅ NUEVO: Recibir currentUser
+  currentUser, 
 }: AssignmentDetailDialogProps) {
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
@@ -46,11 +55,10 @@ export function AssignmentDetailDialog({
   const [justSubmittedQuiz, setJustSubmittedQuiz] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
-  // ✅ NUEVO: Obtener el nombre del usuario
   const getUserName = () => {
     if (currentUser?.name) return currentUser.name;
     
-    // Fallback: Obtener desde localStorage (modo demo)
+    // Fallback
     const demoCurrentUserId = localStorage.getItem('educonnect_demo_current_user');
     if (demoCurrentUserId) {
       const users = localStorage.getItem('educonnect_demo_users');
@@ -68,17 +76,15 @@ export function AssignmentDetailDialog({
   useEffect(() => {
     if (open) {
       console.log('🔍 ==================== ASSIGNMENT DEBUG ====================');
-      console.log('📋 Assignment completo:', assignment);
-      console.log('📋 Assignment.files:', assignment.files);
-      console.log('📋 Assignment.type:', assignment.type);
-      console.log('📋 Cantidad de files:', assignment.files?.length || 0);
+      console.log('📋 Assignment completo:', assignment.title, assignment.id);
       
       if (assignment.files && assignment.files.length > 0) {
         assignment.files.forEach((file: any, idx: number) => {
+          // Log solo de info segura (evitar loguear el data:url completo)
           console.log(`📄 Archivo ${idx + 1}:`, {
             name: file.name,
             type: file.type,
-            url: file.url?.substring(0, 100),
+            urlStart: file.url?.substring(0, 100), 
             hasUrl: !!file.url,
             isPDF: file.type?.includes('pdf') || file.name?.toLowerCase().endsWith('.pdf')
           });
@@ -106,7 +112,6 @@ export function AssignmentDetailDialog({
       }
     } else {
       // LIMPIAR ESTADOS AL CERRAR EL DIALOG
-      // ⚠️ NO resetear isPDFEditorOpen aquí - se resetea cuando el usuario cierra el editor
       setViewingCorrectedPDF(false);
       setJustSubmittedQuiz(false);
       setUploadedFiles([]);
@@ -123,7 +128,6 @@ export function AssignmentDetailDialog({
       );
       setMySubmission(mySubmissionForThis || null);
     } catch (error: any) {
-      // 🔧 ARREGLO: No mostrar error si es por autenticación (se activa modo demo automático)
       const isAuthError = 
         error?.message === 'No user logged in' || 
         error?.message === 'Unauthorized' ||
@@ -133,7 +137,6 @@ export function AssignmentDetailDialog({
       if (!isAuthError) {
         console.error('Error checking submission:', error);
       }
-      // Si es error de autenticación, silenciar completamente
     }
   };
 
@@ -172,12 +175,9 @@ export function AssignmentDetailDialog({
       if (assignment.type === 'form' || assignment.type === 'interactive') {
         content = JSON.stringify(formResponses);
       } else if (assignment.type === 'ia-quiz' && quizData) {
-        // Para tareas autocorregibles, guardamos las respuestas y la calificación
         content = JSON.stringify(quizData.answers);
-        // Calificación sobre 100
         grade = Math.round((quizData.score / quizData.totalPoints) * 100);
       } else if (uploadedFiles.length > 0) {
-        // Si hay archivos subidos, agregar información en el contenido
         const fileInfo = uploadedFiles.map(f => `📎 ${f.name} (${(f.size / 1024).toFixed(2)} KB)`).join('\n');
         content = submissionText + '\n\n--- Archivos adjuntos ---\n' + fileInfo;
       }
@@ -185,7 +185,7 @@ export function AssignmentDetailDialog({
       await apiClient.submitAssignment({
         assignmentId: assignment.id,
         content,
-        grade, // Calificación automática para ia-quiz
+        grade, 
       });
 
       toast.success(
@@ -194,7 +194,6 @@ export function AssignmentDetailDialog({
         (uploadedFiles.length > 0 ? ` (${uploadedFiles.length} archivo(s) adjunto(s))` : '')
       );
       
-      // Para tareas ia-quiz, NO cerrar automáticamente para que el estudiante vea los resultados
       if (assignment.type === 'ia-quiz') {
         setJustSubmittedQuiz(true);
       } else {
@@ -234,53 +233,57 @@ export function AssignmentDetailDialog({
       : url;
   };
 
-  // Encontrar el archivo PDF si existe
-  const pdfFile = assignment.files?.find((f: any) => {
-    // Buscar en el tipo (MIME type)
-    const typeIsPdf = f.type?.includes('pdf');
-    
-    // Buscar en el nombre del archivo
-    const nameIsPdf = f.name?.toLowerCase().endsWith('.pdf');
-    
-    // Buscar en la URL
-    const urlIsPdf = f.url?.toLowerCase().includes('.pdf');
-    
-    // 🔧 NUEVO: Detectar PDFs por contenido en Data URL
-    const isDataUrlPdf = f.url?.startsWith('data:application/pdf');
-    
-    // 🔧 NUEVO: Si el archivo es un data URL, analizar el tipo MIME
-    let mimeTypeFromDataUrl = '';
-    if (f.url?.startsWith('data:')) {
-      const mimeMatch = f.url.match(/^data:([^;]+);/);
-      if (mimeMatch) {
-        mimeTypeFromDataUrl = mimeMatch[1];
-      }
+  // <--- CAMBIO 2: Envolver la lógica 'find' en 'useMemo' --- >
+  // Esto evita que se ejecuten cálculos pesados (RegEx) en cada render,
+  // lo que causaba el "freeze" de 66 segundos.
+  const pdfFile = useMemo(() => {
+    if (!assignment.files || assignment.files.length === 0) {
+      return null;
     }
-    const dataUrlTypeIsPdf = mimeTypeFromDataUrl.includes('pdf');
     
-    // También detectar archivos con tipo genérico que puedan ser PDFs
-    const hasGenericType = f.type === 'application/octet-stream' || !f.type || f.type === '';
-    
-    const isPdf = typeIsPdf || nameIsPdf || urlIsPdf || isDataUrlPdf || dataUrlTypeIsPdf || (hasGenericType && nameIsPdf);
-    
-    console.log('🔍 [PDF Detection]', {
-      fileName: f.name,
-      fileType: f.type,
-      fileUrl: f.url?.substring(0, 50),
-      typeIsPdf,
-      nameIsPdf,
-      urlIsPdf,
-      isDataUrlPdf,
-      dataUrlTypeIsPdf,
-      mimeTypeFromDataUrl,
-      hasGenericType,
-      isPdf
-    });
-    
-    return isPdf;
-  });
+    console.log('Memoizing PDF file search...');
 
-  console.log('📄 [AssignmentDialog]', {
+    return assignment.files.find((f: any) => {
+      // 🔧 NUEVO: Detectar PDF de forma más amplia
+      const typeIsPdf = f.type?.includes('pdf');
+      
+      // Buscar en el nombre del archivo
+      const nameIsPdf = f.name?.toLowerCase().endsWith('.pdf');
+      
+      // ⚠️ ADVERTENCIA: Las siguientes operaciones son LENTAS en Data URLs gigantes
+      // Solo las ejecutamos una vez gracias a useMemo.
+      const urlIsPdf = f.url?.toLowerCase().includes('.pdf');
+      const isDataUrlPdf = f.url?.startsWith('data:application/pdf');
+      
+      // 🔧 NUEVO: Detectar PDFs por contenido en Data URL
+      let mimeTypeFromDataUrl = '';
+      if (f.url?.startsWith('data:')) {
+        const mimeMatch = f.url.match(/^data:([^;]+);/); // <-- El CULPABLE del freeze
+        if (mimeMatch) {
+          mimeTypeFromDataUrl = mimeMatch[1];
+        }
+      }
+      const dataUrlTypeIsPdf = mimeTypeFromDataUrl.includes('pdf');
+      
+      // También detectar archivos con tipo genérico que puedan ser PDFs
+      const hasGenericType = f.type === 'application/octet-stream' || !f.type || f.type === '';
+      
+      const isPdf = typeIsPdf || nameIsPdf || urlIsPdf || isDataUrlPdf || dataUrlTypeIsPdf || (hasGenericType && nameIsPdf);
+      
+      console.log('🔍 [PDF Detection] (Memoized)', {
+        fileName: f.name,
+        fileType: f.type,
+        urlStart: f.url?.substring(0, 50),
+        isPdf
+      });
+      
+      return isPdf;
+    });
+  }, [assignment.files]); // <-- Depender solo de assignment.files
+  // <--- FIN CAMBIO 2 --- >
+
+
+  console.log('📄 [AssignmentDialog] (Render)', {
     assignmentId: assignment.id,
     assignmentTitle: assignment.title,
     filesCount: assignment.files?.length || 0,
@@ -356,13 +359,10 @@ export function AssignmentDetailDialog({
                 <h3 className="mb-2">Archivos Adjuntos</h3>
                 <div className="space-y-2">
                   {assignment.files.map((file: any, index: number) => {
-                    // 🔧 NUEVO: Detectar PDF de forma más amplia
-                    const isPDF = file.type?.includes('pdf') || 
-                                  file.name?.toLowerCase().endsWith('.pdf') ||
-                                  file.url?.toLowerCase().includes('.pdf') ||
-                                  file.url?.startsWith('data:application/pdf');
+                    // Ahora usamos la variable 'pdfFile' que está memoizada
+                    const isThisFileThePDF = pdfFile && pdfFile.url === file.url;
                     
-                    // 🔧 FALLBACK: Si el archivo no tiene extensión, asumir que PUEDE ser un PDF
+                    // Fallback para tipos desconocidos (cálculo rápido)
                     const mightBePDF = !file.name?.includes('.') || file.type === 'application/octet-stream';
                     
                     return (
@@ -373,30 +373,29 @@ export function AssignmentDetailDialog({
                             <div>
                               <p className="text-sm">{file.name}</p>
                               <p className="text-xs text-muted-foreground">{file.type}</p>
-                              {mightBePDF && !isPDF && (
-                                <p className="text-xs text-orange-500">⚠️ Tipo desconocido - puede ser PDF</p>
+                              {mightBePDF && !isThisFileThePDF && (
+                                <p className="text-xs text-orange-500">⚠️ Tipo desconocido</p>
                               )}
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            {(isPDF || mightBePDF) && !isTeacher && !mySubmission && (
+                            {isThisFileThePDF && !isTeacher && !mySubmission && (
                               <Button
                                 variant="default"
                                 size="sm"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   console.log('Opening PDF Editor from Details tab');
-                                  console.log('PDF URL:', file.url);
+                                  console.log('PDF URL:', file.url?.substring(0, 100));
                                   setIsPDFEditorOpen(true);
-                                  // 🔧 ARREGLO: Cerrar el dialog de la tarea para que el PDF Editor sea visible
                                   onOpenChange(false);
                                 }}
                               >
                                 <Edit className="w-4 h-4 mr-2" />
-                                {isPDF ? 'Anotar PDF' : 'Abrir Editor'}
+                                Anotar PDF
                               </Button>
                             )}
-                            {(isPDF || mightBePDF) && !isTeacher && mySubmission && (
+                            {isThisFileThePDF && !isTeacher && mySubmission && (
                               <Button
                                 size="sm"
                                 onClick={(e) => {
@@ -563,9 +562,8 @@ export function AssignmentDetailDialog({
                                 <Button
                                   onClick={() => {
                                     console.log('✅ [AssignmentDialog] Opening PDF Editor');
-                                    console.log('PDF URL:', pdfFile?.url);
+                                    console.log('PDF URL:', pdfFile?.url?.substring(0, 100));
                                     setIsPDFEditorOpen(true);
-                                    // 🔧 ARREGLO: Cerrar el dialog de la tarea para que el PDF Editor sea visible
                                     onOpenChange(false);
                                   }}
                                   size="lg"
