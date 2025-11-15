@@ -1,7 +1,9 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  NOTIFICATION CENTER - V9.7                                           ║
- * ║  FIX: CORREGIDO BUCLE INFINITO DE NOTIFICACIONES                      ║
+ * ║  NOTIFICATION CENTER - V9.8                                           ║
+ * ║  FIX: Corregida la importación. Se usa la CLASE                       ║
+ * ║       'RealtimeNotificationService' en lugar de la función           ║
+ * ║       inexistente 'initializeRealtimeNotifications'.                 ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
  */
 import { useState, useEffect, useCallback } from 'react';
@@ -14,7 +16,8 @@ import {
 import { Bell, CheckCheck, Info, MessageSquare, Award } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { apiClient } from '../utils/api';
-import { initializeRealtimeNotifications } from '../utils/realtime-notifications';
+// <--- CAMBIO 1: Importar la CLASE correcta --- >
+import { RealtimeNotificationService } from '../utils/realtime-notifications';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
@@ -37,8 +40,6 @@ export function NotificationCenter({ userId }: { userId: string }) {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  // <--- CAMBIO 1: 'loadNotifications' ahora está en un 'useCallback' --- >
-  // Esto asegura que la función no se recree en cada renderizado.
   const loadNotifications = useCallback(async () => {
     console.log('[NotifCenter] Cargando notificaciones...');
     setIsLoading(true);
@@ -53,7 +54,7 @@ export function NotificationCenter({ userId }: { userId: string }) {
     }
   }, [userId]); // Depende solo de userId
 
-  // <--- CAMBIO 2: 'useEffect' modificado para romper el loop --- >
+  // <--- CAMBIO 2: 'useEffect' modificado para usar la CLASE --- >
   useEffect(() => {
     if (!userId) return;
 
@@ -64,28 +65,30 @@ export function NotificationCenter({ userId }: { userId: string }) {
     const onNewNotification = (newNotification: Notification) => {
       console.log('🔔 [NotifCenter] Evento de nueva notificación recibido', newNotification);
       
-      // --- ¡ESTA ES LA CORRECCIÓN CLAVE! ---
-      // En lugar de llamar a `loadNotifications()` (que causa el loop),
-      // añadimos la nueva notificación directamente al estado.
       setNotifications((currentNotifications) => {
         // Evitar duplicados si el evento llega muy rápido
         if (currentNotifications.find(n => n.id === newNotification.id)) {
           return currentNotifications;
         }
+        // Añadir la nueva al principio de la lista
         return [newNotification, ...currentNotifications];
       });
     };
 
+    // --- ¡ESTA ES LA CORRECCIÓN CLAVE! ---
     // Inicializar el servicio de notificaciones en tiempo real
-    const cleanup = initializeRealtimeNotifications(userId, onNewNotification);
+    // Creando una INSTANCIA de la clase.
+    console.log(`[NotifCenter] Creando instancia de RealtimeNotificationService para ${userId}`);
+    const notificationService = new RealtimeNotificationService(userId, onNewNotification);
 
     // Limpiar la suscripción al desmontar el componente
     return () => {
       console.log('[NotifCenter] Limpiando suscripción de notificaciones');
-      cleanup();
+      notificationService.cleanup(); // <-- Llamar al método cleanup de la instancia
     };
   }, [userId, loadNotifications]); // <--- Se ejecuta si 'userId' o 'loadNotifications' cambian
   // <--- FIN CAMBIO 2 --- >
+
 
   const markAsRead = async (notificationId: string | 'all') => {
     // Actualizar UI inmediatamente para mejor respuesta
