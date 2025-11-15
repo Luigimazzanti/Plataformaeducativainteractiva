@@ -1,7 +1,8 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  NOTIFICATION CENTER - V10.0                                          ║
- * ║  FIX: Corregido el error de sintaxis (etiqueta </p> faltante)          ║
+ * ║  NOTIFICATION CENTER - V10.4 (SOLUCIÓN FULL-STACK)                    ║
+ * ║  FIX: Separados 'useEffect' para carga inicial y 'realtime'           ║
+ * ║       para romper el loop infinito de carga/creación de notificaciones. ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
  */
 import { useState, useEffect, useCallback } from 'react';
@@ -37,49 +38,74 @@ export function NotificationCenter({ userId }: { userId: string }) {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
+  // <--- INICIO DE LA SOLUCIÓN --- >
+
+  // Se mantiene esta función 'useCallback' para que 'markAsRead' pueda llamarla
   const loadNotifications = useCallback(async () => {
-    console.log('[NotifCenter] Cargando notificaciones...');
+    console.log('[NotifCenter] RECARGANDO notificaciones (manual)...');
     setIsLoading(true);
     try {
-      // Usamos el apiClient que ya tiene el token
       const data = await apiClient.getNotifications(userId);
       setNotifications(data.notifications || []);
     } catch (error) {
-      console.error('Error al cargar notificaciones:', error);
+      console.error('Error al recargar notificaciones:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [userId]); // Depende solo de userId
+  }, [userId]);
 
+  // EFECTO 1: Carga inicial de notificaciones.
+  // Se ejecuta SÓLO UNA VEZ al montar el componente (y si cambia el userId).
   useEffect(() => {
     if (!userId) return;
 
-    // Carga inicial
-    loadNotifications();
+    const loadInitialNotifications = async () => {
+      console.log('[NotifCenter] EFECTO 1: Cargando notificaciones INICIALES...');
+      setIsLoading(true);
+      try {
+        const data = await apiClient.getNotifications(userId);
+        setNotifications(data.notifications || []);
+      } catch (error) {
+        console.error('Error al cargar notificaciones iniciales:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadInitialNotifications();
+  }, [userId]); // Solo depende de userId
 
-    // Función que se llamará cuando llegue una notificación en tiempo real
+  // EFECTO 2: Suscripción a notificaciones en tiempo real.
+  // Se ejecuta SÓLO UNA VEZ y configura el listener.
+  useEffect(() => {
+    if (!userId) return;
+
+    // Esta es la función que se llamará desde el servicio de realtime
     const onNewNotification = (newNotification: Notification) => {
-      console.log('🔔 [NotifCenter] Evento de nueva notificación recibido', newNotification);
+      console.log('🔔 [NotifCenter] EFECTO 2: Evento de nueva notificación recibido', newNotification);
       
+      // ESTA ES LA LÓGICA ANTI-LOOP:
+      // Solo añadimos la notificación al estado.
+      // NO volvemos a llamar a loadNotifications().
       setNotifications((currentNotifications) => {
-        // Evitar duplicados si el evento llega muy rápido
         if (currentNotifications.find(n => n.id === newNotification.id)) {
-          return currentNotifications;
+          return currentNotifications; // Evitar duplicados
         }
-        // Añadir la nueva al principio de la lista
         return [newNotification, ...currentNotifications];
       });
     };
 
-    console.log(`[NotifCenter] Creando instancia de RealtimeNotificationService para ${userId}`);
+    console.log(`[NotifCenter] EFECTO 2: Creando instancia de RealtimeNotificationService para ${userId}`);
     const notificationService = new RealtimeNotificationService(userId, onNewNotification);
 
-    // Limpiar la suscripción al desmontar el componente
+    // Función de limpieza
     return () => {
-      console.log('[NotifCenter] Limpiando suscripción de notificaciones');
+      console.log('[NotifCenter] EFECTO 2: Limpiando suscripción de notificaciones');
       notificationService.disconnect();
     };
-  }, [userId, loadNotifications]); 
+  }, [userId]); // Solo depende de userId
+
+  // <--- FIN DE LA SOLUCIÓN --- >
 
 
   const markAsRead = async (notificationId: string | 'all') => {
@@ -97,7 +123,7 @@ export function NotificationCenter({ userId }: { userId: string }) {
       await apiClient.markNotificationsAsRead(userId, notificationId);
     } catch (error) {
       console.error('Error al marcar como leídas:', error);
-      // Revertir si hay un error (opcional)
+      // Revertir si hay un error
       loadNotifications();
     }
   };
@@ -170,16 +196,12 @@ export function NotificationCenter({ userId }: { userId: string }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-foreground mb-1">{n.message}</p>
-                        
-                        {/* --- ESTA ES LA LÍNEA CORREGIDA --- */}
                         <p className="text-xs text-muted-foreground">
                           {formatDistanceToNow(new Date(n.createdAt), {
                             addSuffix: true,
                             locale: es,
                           })}
                         </p>
-                        {/* --- FIN DE LA CORRECCIÓN --- */}
-
                       </div>
                       {!n.isRead && (
                         <Button
