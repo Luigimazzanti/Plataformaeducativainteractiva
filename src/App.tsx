@@ -1,7 +1,8 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  APP.TSX - RECOMPILACION NUCLEAR V9.4                                 ║
- * ║  FIX: BUCLE DE RENDERIZADO INFINITO CORREGIDO (useCallback)           ║
+ * ║  APP.TSX - RECOMPILACION NUCLEAR V9.5                                 ║
+ * ║  FIX: Corregido 'AuthManager.getUser' (no existe)                     ║
+ * ║       por 'apiClient.getSelf()' (correcto)                            ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -69,9 +70,6 @@ export default function App() {
   // Estado para forzar recarga de submissions
   const [submissionsKey, setSubmissionsKey] = useState(Date.now());
 
-  // <--- CAMBIO 1: Arreglo del bucle infinito --- >
-  // 'loadInitialData' ahora solo depende de sí misma (se crea una vez)
-  // y el 'useEffect' que la llama solo se ejecuta una vez.
   const loadInitialData = useCallback(async () => {
     console.log('Verificando sesión...');
     try {
@@ -90,7 +88,11 @@ export default function App() {
         localStorage.setItem('educonnect_demo_mode', 'true');
       }
 
-      const { user } = await AuthManager.getUser();
+      // <--- ESTE ES EL ARREGLO --- >
+      // const { user } = await AuthManager.getUser(); // <--- INCORRECTO
+      const { user } = await apiClient.getSelf(); // <--- CORRECTO
+      // <--- FIN DEL ARREGLO --- >
+      
       if (user) {
         console.log('Usuario válido encontrado:', user.role);
         setUser(user);
@@ -105,21 +107,16 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  }, []); // <--- El array de dependencias DEBE estar vacío
+  }, []); // El array de dependencias DEBE estar vacío
 
   useEffect(() => {
     loadInitialData();
-  }, [loadInitialData]); // <--- Este useEffect ahora se ejecuta solo una vez
-  // <--- FIN CAMBIO 1 --- >
+  }, [loadInitialData]); // Este useEffect ahora se ejecuta solo una vez
 
-  // <--- CAMBIO 2: Estabilizar la función 'handleSubmissionsUpdate' --- >
-  // Envolvemos la función en 'useCallback' para que no se cree
-  // una nueva en cada renderizado de 'App.tsx'.
   const handleSubmissionsUpdate = useCallback(() => {
     console.log('Actualización de entregas detectada, forzando recarga...');
     setSubmissionsKey(Date.now());
-  }, []); // <--- Dependencias vacías, se crea una sola vez
-  // <--- FIN CAMBIO 2 --- >
+  }, []); // Dependencias vacías, se crea una sola vez
 
   const handleLoginSuccess = (loggedInUser: any) => {
     console.log('Login exitoso, usuario:', loggedInUser.role);
