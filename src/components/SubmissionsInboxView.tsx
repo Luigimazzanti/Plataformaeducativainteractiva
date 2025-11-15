@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// <--- CAMBIO 1: Importar 'useCallback' --- >
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -22,11 +23,7 @@ import {
   Video
 } from 'lucide-react';
 import { toast } from 'sonner';
-// <--- CAMBIO 1: Importar el editor correcto --- >
-// Se elimina el antiguo PDFAnnotator
-// import { PDFAnnotator } from './PDFAnnotator'; 
 import { FullScreenPDFEditor } from './FullScreenPDFEditor';
-// <--- FIN CAMBIO 1 --- >
 import { InteractiveActivityRenderer } from './InteractiveActivityRenderer';
 import { AIQuizRenderer } from './AIQuizRenderer';
 import { apiClient } from '../utils/api';
@@ -48,16 +45,15 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
   // Estado para revisión
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
-  // <--- CAMBIO 2: Nuevo estado para el editor de PDF --- >
   const [showPDFEditor, setShowPDFEditor] = useState(false);
-  // <--- FIN CAMBIO 2 --- >
   const [gradeValue, setGradeValue] = useState('');
   const [feedback, setFeedback] = useState('');
 
   console.log('[SubmissionsInboxView] ⚡ Antes del useEffect - submissions.length:', submissions.length);
   console.log('[SubmissionsInboxView] ⚡ isLoading:', isLoading);
 
-  const loadSubmissions = async () => {
+  // <--- CAMBIO 2: Envolver 'loadSubmissions' en 'useCallback' --- >
+  const loadSubmissions = useCallback(async () => {
     console.log('[SubmissionsInbox] 🚀🚀🚀 FUNCIÓN loadSubmissions LLAMADA');
     setIsLoading(true);
     
@@ -162,9 +158,11 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
       setIsLoading(false);
       console.log('[SubmissionsInbox] 🏁 Proceso de carga finalizado');
     }
-  };
+  }, [teacherId]); // <-- Añadir 'teacherId' como dependencia de 'useCallback'
+  // <--- FIN CAMBIO 2 --- >
 
   // useEffect para cargar entregas al montar
+  // <--- CAMBIO 3: Corregir las dependencias del 'useEffect' --- >
   useEffect(() => {
     console.log('[SubmissionsInboxView] 🔄🔄🔄 useEffect EJECUTADO - teacherId:', teacherId);
     console.log('[SubmissionsInboxView] 🔄 Iniciando loadSubmissions()...');
@@ -187,8 +185,8 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
     return () => {
       window.removeEventListener('submission-added', handleSubmissionAdded as EventListener);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teacherId]);
+  }, [teacherId, loadSubmissions]); // <-- Depender de 'loadSubmissions'
+  // <--- FIN CAMBIO 3 --- >
 
   const getAssignmentTitle = (submission: any) => {
     // Priorizar el título guardado en la submission (independiente)
@@ -225,7 +223,6 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
     return assignments.find((a) => a.id === assignmentId);
   };
 
-  // <--- CAMBIO 3: Lógica de apertura modificada --- >
   const handleOpenReview = (submission: any) => {
     console.log('[SubmissionsInbox] 🔍 Abriendo revisión:', {
       submissionId: submission.id,
@@ -249,9 +246,9 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
       setShowReviewDialog(true); // <--- Usa el estado antiguo
     }
   };
-  // <--- FIN CAMBIO 3 --- >
 
-  const handleGradeSubmit = async (grade: number, feedbackText: string) => {
+  // <--- CAMBIO 4: Envolver 'handleGradeSubmit' en 'useCallback' --- >
+  const handleGradeSubmit = useCallback(async (grade: number, feedbackText: string) => {
     if (!selectedSubmission) return;
 
     try {
@@ -276,7 +273,8 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
       console.error('[SubmissionsInbox] ❌ Error grading submission:', error);
       toast.error('Error al guardar la calificación');
     }
-  };
+  }, [selectedSubmission, loadSubmissions, onUpdateSubmission]); // <-- Dependencias
+  // <--- FIN CAMBIO 4 --- >
 
   const handleFinalizeReview = () => {
     const grade = parseFloat(gradeValue);
@@ -304,10 +302,8 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
         return <ClipboardList className="w-5 h-5" />;
       case 'video':
         return <Video className="w-5 h-5" />;
-      // <--- CAMBIO 4: Añadir caso para PDF --- >
       case 'pdf':
         return <FileText className="w-5 h-5 text-red-500" />;
-      // <--- FIN CAMBIO 4 --- >
       default:
         return <FileText className="w-5 h-5" />;
     }
@@ -326,10 +322,8 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
         return <Badge variant="secondary">Formulario</Badge>;
       case 'video':
         return <Badge variant="secondary">Video</Badge>;
-      // <--- CAMBIO 5: Añadir caso para PDF --- >
       case 'pdf':
         return <Badge className="bg-red-500 text-white border-0">PDF Interactivo</Badge>;
-      // <--- FIN CAMBIO 5 --- >
       default:
         return <Badge variant="secondary">Estándar</Badge>;
     }
@@ -363,26 +357,6 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
       title: assignment.title,
       type: assignment.type
     });
-
-    // <--- CAMBIO 6: Eliminar la sección de PDF de aquí --- >
-    // El PDF ahora se maneja en FullScreenPDFEditor
-    /*
-    if (assignment.type === 'pdf' && assignment.fileUrl) {
-      return (
-        <PDFAnnotator
-          pdfUrl={assignment.fileUrl}
-          assignmentId={assignment.id}
-          open={true}
-          onOpenChange={() => setShowReviewDialog(false)}
-          readOnly={false}
-          isTeacher={true}
-          studentId={submission.studentId}
-          initialAnnotations={submission.content?.annotations || []}
-        />
-      );
-    }
-    */
-    // <--- FIN CAMBIO 6 --- >
 
     // Actividad Interactiva
     if (assignment.type === 'interactive' && assignment.content) {
@@ -456,7 +430,6 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
   return (
     <div className="space-y-4 sm:space-y-6 max-w-5xl mx-auto">
       
-      {/* <--- CAMBIO 7: Añadir el render del editor de PDF --- > */}
       {showPDFEditor && selectedSubmission && (
         <FullScreenPDFEditor
           assignmentId={selectedSubmission.assignmentId}
@@ -477,7 +450,6 @@ export function SubmissionsInboxView({ teacherId, onUpdateSubmission }: Submissi
           isGraded={selectedSubmission.status === 'GRADED'} // <-- Estado de calificación
         />
       )}
-      {/* <--- FIN CAMBIO 7 --- > */}
 
       {/* Header con contador */}
       <div className="flex items-center justify-center gap-4 flex-wrap">
