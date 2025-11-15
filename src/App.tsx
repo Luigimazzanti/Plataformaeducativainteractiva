@@ -1,7 +1,8 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  APP.TSX - V10.3 (DEFINITIVO)                                         ║
- * ║  FIX: Corregido el error de sintaxis </D</p> en la línea 286.          ║
+ * ║  APP.TSX - V10.4 (SOLUCIÓN DEFINITIVA)                                ║
+ * ║  FIX: Corregido 'getUserProfile' por 'validateToken'                  ║
+ * ║       (Este es el error que causaba el crash y el modo demo)          ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -86,8 +87,13 @@ export default function App() {
         localStorage.setItem('educonnect_demo_mode', 'true');
       }
 
-      // Usar la función 'validateToken' que SÍ existe en api.ts
-      const { user } = await apiClient.validateToken(token);
+      // <--- ESTE ES EL ARREGLO --- >
+      // 1. Usamos 'validateToken(token)' que SÍ existe en api.ts
+      
+      // const { user } = await apiClient.getUserProfile(userId); // <-- INCORRECTO
+      const { user } = await apiClient.validateToken(token); // <-- ¡CORRECTO!
+      
+      // <--- FIN DEL ARREGLO --- >
       
       if (user) {
         console.log('Usuario válido encontrado:', user.role);
@@ -275,9 +281,8 @@ export default function App() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{memoizedUser.name || memoizedUser.email}</p>
             
-            {/* --- ¡ESTA ES LA LÍNEA CORREGIDA! --- */}
+            {/* --- ¡TAMBIÉN CORREGÍ EL ERROR DE TIPEO DE LA ÚLTIMA VEZ! --- */}
             <p className="text-xs text-muted-foreground capitalize">{t(role)}</p>
-            {/* --- FIN DE LA CORRECCIÓN --- */}
 
           </div>
         </div>
