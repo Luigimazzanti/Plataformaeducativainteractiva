@@ -1,8 +1,7 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  APP.TSX - V10.2 (LA SOLUCIÓN DEFINITIVA)                             ║
- * ║  FIX: Corregido el error 'getUserProfile is not a function'           ║
- * ║       Usando 'apiClient.validateToken(token)' que SÍ existe.          ║
+ * ║  APP.TSX - V10.3 (DEFINITIVO)                                         ║
+ * ║  FIX: Corregido el error de sintaxis </D</p> en la línea 286.          ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -87,16 +86,8 @@ export default function App() {
         localStorage.setItem('educonnect_demo_mode', 'true');
       }
 
-      // <--- ESTE ES EL ARREGLO DEFINITIVO --- >
-      // 1. Ya no buscamos userId, solo pasamos el token
-      // 2. Usamos 'validateToken(token)' que SÍ existe en api.ts
-      
-      // const userId = AuthManager.getUserId(); // <-- YA NO ES NECESARIO
-      // const { user } = await apiClient.getUserProfile(userId); // <-- INCORRECTO
-      
-      const { user } = await apiClient.validateToken(token); // <-- ¡CORRECTO!
-      
-      // <--- FIN DEL ARREGLO --- >
+      // Usar la función 'validateToken' que SÍ existe en api.ts
+      const { user } = await apiClient.validateToken(token);
       
       if (user) {
         console.log('Usuario válido encontrado:', user.role);
@@ -203,7 +194,7 @@ export default function App() {
             onNavigate={setView}
           />
         ) : (
-          <StudentDashboard user={memoidUser} onNavigate={setView} />
+          <StudentDashboard user={memoizedUser} onNavigate={setView} />
         );
       case 'assignments':
         return <MyStudentsWithTasks viewMode="assignments" teacherId={memoizedUser.id} />;
@@ -283,7 +274,11 @@ export default function App() {
           />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{memoizedUser.name || memoizedUser.email}</p>
-            <p className="text-xs text-muted-foreground capitalize">{t(role)}</D</p>
+            
+            {/* --- ¡ESTA ES LA LÍNEA CORREGIDA! --- */}
+            <p className="text-xs text-muted-foreground capitalize">{t(role)}</p>
+            {/* --- FIN DE LA CORRECCIÓN --- */}
+
           </div>
         </div>
         <Button variant="outline" className="w-full" onClick={handleLogout}>
