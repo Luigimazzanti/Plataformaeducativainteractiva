@@ -1,9 +1,8 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  NOTIFICATION CENTER - V9.8                                           ║
- * ║  FIX: Corregida la importación. Se usa la CLASE                       ║
- * ║       'RealtimeNotificationService' en lugar de la función           ║
- * ║       inexistente 'initializeRealtimeNotifications'.                 ║
+ * ║  NOTIFICATION CENTER - V9.9                                           ║
+ * ║  FIX: CORRECCIÓN FINALÍSIMA                                           ║
+ * ║       'notificationService.cleanup()' -> 'notificationService.disconnect()'
  * ╚═══════════════════════════════════════════════════════════════════════╝
  */
 import { useState, useEffect, useCallback } from 'react';
@@ -16,7 +15,6 @@ import {
 import { Bell, CheckCheck, Info, MessageSquare, Award } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { apiClient } from '../utils/api';
-// <--- CAMBIO 1: Importar la CLASE correcta --- >
 import { RealtimeNotificationService } from '../utils/realtime-notifications';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
@@ -54,7 +52,6 @@ export function NotificationCenter({ userId }: { userId: string }) {
     }
   }, [userId]); // Depende solo de userId
 
-  // <--- CAMBIO 2: 'useEffect' modificado para usar la CLASE --- >
   useEffect(() => {
     if (!userId) return;
 
@@ -75,19 +72,17 @@ export function NotificationCenter({ userId }: { userId: string }) {
       });
     };
 
-    // --- ¡ESTA ES LA CORRECCIÓN CLAVE! ---
-    // Inicializar el servicio de notificaciones en tiempo real
-    // Creando una INSTANCIA de la clase.
     console.log(`[NotifCenter] Creando instancia de RealtimeNotificationService para ${userId}`);
     const notificationService = new RealtimeNotificationService(userId, onNewNotification);
 
     // Limpiar la suscripción al desmontar el componente
     return () => {
       console.log('[NotifCenter] Limpiando suscripción de notificaciones');
-      notificationService.cleanup(); // <-- Llamar al método cleanup de la instancia
+      // <--- ESTE ES EL ARREGLO --- >
+      notificationService.disconnect(); // <-- 'disconnect()' es la función correcta
+      // <--- FIN DEL ARREGLO --- >
     };
-  }, [userId, loadNotifications]); // <--- Se ejecuta si 'userId' o 'loadNotifications' cambian
-  // <--- FIN CAMBIO 2 --- >
+  }, [userId, loadNotifications]); // Se ejecuta si 'userId' o 'loadNotifications' cambian
 
 
   const markAsRead = async (notificationId: string | 'all') => {
@@ -183,30 +178,4 @@ export function NotificationCenter({ userId }: { userId: string }) {
                             addSuffix: true,
                             locale: es,
                           })}
-                        </p>
-                      </div>
-                      {!n.isRead && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="w-8 h-8 rounded-full flex-shrink-0"
-                          title="Marcar como leída"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            markAsRead(n.id);
-                          }}
-                        >
-                          <div className="w-2 h-2 rounded-full bg-primary" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </PopoverContent>
-    </Popover>
-  );
-}
+                        </>
