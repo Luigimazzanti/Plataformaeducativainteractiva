@@ -1,8 +1,9 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  APP.TSX - RECOMPILACION NUCLEAR V9.6                                 ║
- * ║  FIX: Corregido 'AuthManager.clearSession' (no existe)                ║
- * ║       por 'AuthManager.clearAll()' (correcto)                         ║
+ * ║  APP.TSX - RECOMPILACION NUCLEAR V9.7                                 ║
+ * ║  FIX: CORRECCIÓN FINAL                                                ║
+ * ║       'apiClient.getSelf' -> 'AuthManager.getUserId()'              ║
+ * ║       y luego 'apiClient.getUserProfile(userId)'                      ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -83,28 +84,36 @@ export default function App() {
       console.log('Token encontrado, validando...');
       apiClient.setToken(token);
       
-      // FORZAR MODO DEMO SI ES TOKEN DEMO
       if (token.startsWith('demo_')) {
         localStorage.setItem('educonnect_demo_mode', 'true');
       }
 
-      const { user } = await apiClient.getSelf();
+      // <--- ESTE ES EL ARREGLO --- >
+      // 1. Obtener el ID de usuario guardado
+      const userId = AuthManager.getUserId();
+      if (!userId) {
+        console.log('No User ID found, limpiando...');
+        AuthManager.clearAll();
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('User ID encontrado, buscando perfil:', userId);
+      // 2. Usar la función CORRECTA con el userId
+      const { user } = await apiClient.getUserProfile(userId); 
+      // <--- FIN DEL ARREGLO --- >
       
       if (user) {
         console.log('Usuario válido encontrado:', user.role);
         setUser(user);
         setView(user.role === 'admin' ? 'admin-users' : 'dashboard');
       } else {
-        console.log('Token inválido o expirado');
-        // <--- ESTE ES EL ARREGLO 1 --- >
-        AuthManager.clearAll(); // <--- CORREGIDO
-        // <--- FIN DEL ARREGLO 1 --- >
+        console.log('Token/User ID inválido o expirado');
+        AuthManager.clearAll();
       }
     } catch (error) {
       console.error('Error al cargar sesión:', error);
-      // <--- ESTE ES EL ARREGLO 2 --- >
-      AuthManager.clearAll(); // <--- CORREGIDO
-      // <--- FIN DEL ARREGLO 2 --- >
+      AuthManager.clearAll();
     } finally {
       setIsLoading(false);
     }
@@ -127,9 +136,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    // <--- ESTE ES EL ARREGLO 3 --- >
-    AuthManager.clearAll(); // <--- CORREGIDO
-    // <--- FIN DEL ARREGLO 3 --- >
+    AuthManager.clearAll();
     setUser(null);
     setView('dashboard');
     // Forzar recarga para limpiar estado de demo
