@@ -39,6 +39,7 @@ const translations: Record<Language, Record<string, string>> = {
     'createAccount': 'Crear Cuenta',
     'iAm': 'Soy un...',
     'modernEducationalPlatform': 'Plataforma educativa moderna',
+    'welcomeMessage': 'Bienvenido a tu espacio de aprendizaje',
     'invalidCredentials': 'Credenciales inválidas. Por favor verifica tu email y contraseña, o crea una cuenta nueva en "Registrarse".',
     'loginError': 'Error al iniciar sesión',
     'signupError': 'Error al registrarse',
