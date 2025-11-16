@@ -1,7 +1,9 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  API.TS - V10.5 (SOLUCIÓN FULL-STACK)                                 ║
- * ║  FIX: Añadida la función 'validateToken' que faltaba en App.tsx.      ║
+ * ║  API.TS - V10.6 (SOLUCIÓN FULL-STACK)                                 ║
+ * ║  FIX: Eliminada la lógica de intercepción de 'isDemoMode()'           ║
+ * ║       que llamaba a 'demoModeAPI.handleRequest' (inexistente)         ║
+ * ║       y causaba el crash en bucle.                                    ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
  */
 import { AuthManager } from './auth-manager';
@@ -29,20 +31,14 @@ class ApiClient {
     this.token = token;
   }
 
-  // ... (otros métodos)
-
   private async request(endpoint: string, options: RequestInit = {}): Promise<any> {
-    // Si estamos en modo demo, interceptar la llamada
-    if (isDemoMode()) {
-      console.log(`[DemoAPI] Interceptando: ${options.method || 'GET'} ${endpoint}`);
-      try {
-        const demoResponse = await demoModeAPI.handleRequest(endpoint, options);
-        return demoResponse;
-      } catch (error) {
-        console.error(`[DemoAPI] Error:`, error);
-        throw error;
-      }
-    }
+    
+    // <--- INICIO DEL ARREGLO --- >
+    // La lógica 'if (isDemoMode())' se eliminó de aquí
+    // porque estaba rota y causaba un crash.
+    // El 'LoginForm' y otros componentes ya manejan
+    // la llamada a 'demoModeAPI' explícitamente cuando es necesario.
+    // <--- FIN DEL ARREGLO --- >
 
     // Lógica de API real
     const url = `${this.serverUrl}${endpoint}`;
@@ -113,19 +109,22 @@ class ApiClient {
     });
   }
 
-  // <--- ¡FUNCIÓN AÑADIDA QUE ARREGLA EL CRASH! --- >
   async validateToken(token: string): Promise<{ user: any }> {
     return this.request('/auth/validate', {
       method: 'POST',
       body: JSON.stringify({ token }),
     });
   }
-  // <--- FIN DE LA FUNCIÓN AÑADIDA --- >
 
   // --- USERS ---
   async getUsers(role?: 'teacher' | 'student'): Promise<any[]> {
     const endpoint = role ? `/users?role=${role}` : '/users';
     return this.request(endpoint);
+  }
+  
+  // (Esta función no estaba en tu 'api.ts' pero 'App.tsx' la necesita)
+  async getUserProfile(userId: string): Promise<any> {
+    return this.request(`/users/${userId}`);
   }
 
   async updateUser(userId: string, data: any): Promise<any> {
@@ -199,6 +198,15 @@ class ApiClient {
   }
   
   async getStudentSubmissions(studentId: string): Promise<any[]> {
+    // ⚠️ ATENCIÓN: Esta función se llamaba 'getMySubmissions'
+    // pero el endpoint es '/submissions/student/:studentId'
+    return this.request(`/submissions/student/${studentId}`);
+  }
+  
+  // (Función duplicada de la anterior, pero con el nombre que usa StudentDashboard)
+  async getMySubmissions(): Promise<any> {
+    const studentId = AuthManager.getUserId();
+    if (!studentId) throw new Error("No user logged in");
     return this.request(`/submissions/student/${studentId}`);
   }
 
@@ -213,6 +221,16 @@ class ApiClient {
     return this.request(`/submissions/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
+    });
+  }
+  
+  async submitAssignment(data: any): Promise<any> {
+    const studentId = AuthManager.getUserId();
+    return this.createSubmission({
+      ...data,
+      studentId: studentId,
+      status: 'SUBMITTED',
+      submittedAt: new Date().toISOString(),
     });
   }
 
