@@ -24,7 +24,7 @@ additional_redirect_urls = ["https://localhost:3000"]
 jwt_expiry = 3600
 enable_signup = true
 
-[functions.final_server]
+[functions.server]
 verify_jwt = false
 
 # Note: The actual edge function is located at:
