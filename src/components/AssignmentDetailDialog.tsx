@@ -1,12 +1,10 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
  * ║  AssignmentDetailDialog.tsx - V10.5 (SOLUCIÓN DE RENDIMIENTO)         ║
- * ║  FIX: Corregido el 'freeze' de 66 segundos (Violation)                ║
+ * ║  FIX: Corregido el 'freeze' de +282 segundos (Violation)              ║
  * ║       envolviendo la lógica 'pdfFile.find' en 'useMemo'.              ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
  */
-
-// <--- CAMBIO 1: Importar 'useMemo' --- >
 import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
@@ -23,7 +21,7 @@ import { DynamicForm } from './DynamicForm';
 import { FullScreenPDFEditor } from './FullScreenPDFEditor';
 import { PDFVersionManager } from './PDFVersionManager';
 import { AIQuizRenderer } from './AIQuizRenderer';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner'; // Eliminado @2.0.3 para usar la versión del proyecto
 
 interface AssignmentDetailDialogProps {
   assignment: any;
@@ -117,7 +115,7 @@ export function AssignmentDetailDialog({
       setUploadedFiles([]);
       setSubmissionText('');
     }
-  }, [open, isTeacher]);
+  }, [open, isTeacher, assignment.id]); // <-- Añadido assignment.id por si cambia
 
   const checkMySubmission = async () => {
     try {
@@ -233,29 +231,32 @@ export function AssignmentDetailDialog({
       : url;
   };
 
-  // <--- CAMBIO 2: Envolver la lógica 'find' en 'useMemo' --- >
+  // <--- INICIO DEL ARREGLO (useMemo) --- >
   // Esto evita que se ejecuten cálculos pesados (RegEx) en cada render,
-  // lo que causaba el "freeze" de 66 segundos.
+  // lo que causaba el "freeze" de +282 segundos.
   const pdfFile = useMemo(() => {
     if (!assignment.files || assignment.files.length === 0) {
       return null;
     }
     
-    console.log('Memoizing PDF file search...');
+    console.log('[AssignmentDetailDialog] Memoizing PDF file search...');
 
     return assignment.files.find((f: any) => {
-      // 🔧 NUEVO: Detectar PDF de forma más amplia
+      // 1. Búsqueda rápida y segura (tipo y nombre)
       const typeIsPdf = f.type?.includes('pdf');
-      
-      // Buscar en el nombre del archivo
       const nameIsPdf = f.name?.toLowerCase().endsWith('.pdf');
       
+      if (typeIsPdf || nameIsPdf) {
+        console.log(`🔍 [PDF Detection] (Memoized) Encontrado rápido: ${f.name}`);
+        return true;
+      }
+
+      // 2. Búsqueda costosa (Data URL) - solo si falla la rápida
       // ⚠️ ADVERTENCIA: Las siguientes operaciones son LENTAS en Data URLs gigantes
       // Solo las ejecutamos una vez gracias a useMemo.
       const urlIsPdf = f.url?.toLowerCase().includes('.pdf');
       const isDataUrlPdf = f.url?.startsWith('data:application/pdf');
       
-      // 🔧 NUEVO: Detectar PDFs por contenido en Data URL
       let mimeTypeFromDataUrl = '';
       if (f.url?.startsWith('data:')) {
         const mimeMatch = f.url.match(/^data:([^;]+);/); // <-- El CULPABLE del freeze
@@ -265,12 +266,9 @@ export function AssignmentDetailDialog({
       }
       const dataUrlTypeIsPdf = mimeTypeFromDataUrl.includes('pdf');
       
-      // También detectar archivos con tipo genérico que puedan ser PDFs
-      const hasGenericType = f.type === 'application/octet-stream' || !f.type || f.type === '';
+      const isPdf = urlIsPdf || isDataUrlPdf || dataUrlTypeIsPdf;
       
-      const isPdf = typeIsPdf || nameIsPdf || urlIsPdf || isDataUrlPdf || dataUrlTypeIsPdf || (hasGenericType && nameIsPdf);
-      
-      console.log('🔍 [PDF Detection] (Memoized)', {
+      console.log('🔍 [PDF Detection] (Memoized - Lento)', {
         fileName: f.name,
         fileType: f.type,
         urlStart: f.url?.substring(0, 50),
@@ -280,7 +278,7 @@ export function AssignmentDetailDialog({
       return isPdf;
     });
   }, [assignment.files]); // <-- Depender solo de assignment.files
-  // <--- FIN CAMBIO 2 --- >
+  // <--- FIN DEL ARREGLO (useMemo) --- >
 
 
   console.log('📄 [AssignmentDialog] (Render)', {
@@ -290,7 +288,7 @@ export function AssignmentDetailDialog({
     pdfFileFound: !!pdfFile,
     pdfFileName: pdfFile?.name,
     pdfFileType: pdfFile?.type,
-    pdfFileUrl: pdfFile?.url?.substring(0, 50),
+    pdfFileUrlStart: pdfFile?.url?.substring(0, 50), // No loguear el string entero
     isTeacher,
     hasMySubmission: !!mySubmission
   });
@@ -362,9 +360,6 @@ export function AssignmentDetailDialog({
                     // Ahora usamos la variable 'pdfFile' que está memoizada
                     const isThisFileThePDF = pdfFile && pdfFile.url === file.url;
                     
-                    // Fallback para tipos desconocidos (cálculo rápido)
-                    const mightBePDF = !file.name?.includes('.') || file.type === 'application/octet-stream';
-                    
                     return (
                       <Card key={index}>
                         <CardContent className="flex items-center justify-between p-4">
@@ -373,9 +368,6 @@ export function AssignmentDetailDialog({
                             <div>
                               <p className="text-sm">{file.name}</p>
                               <p className="text-xs text-muted-foreground">{file.type}</p>
-                              {mightBePDF && !isThisFileThePDF && (
-                                <p className="text-xs text-orange-500">⚠️ Tipo desconocido</p>
-                              )}
                             </div>
                           </div>
                           <div className="flex gap-2">
