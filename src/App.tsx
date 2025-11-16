@@ -1,8 +1,7 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  APP.TSX - V10.4 (SOLUCIÓN DEFINITIVA)                                ║
- * ║  FIX: Corregido 'getUserProfile' por 'validateToken'                  ║
- * ║       (Este es el error que causaba el crash y el modo demo)          ║
+ * ║  APP.TSX - V10.1                                                      ║
+ * ║  FIX: Usando 'apiClient.validateToken(token)' para restaurar la sesión.║
  * ╚═══════════════════════════════════════════════════════════════════════╝
  */
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -88,16 +87,13 @@ export default function App() {
       }
 
       // <--- ESTE ES EL ARREGLO --- >
-      // 1. Usamos 'validateToken(token)' que SÍ existe en api.ts
-      
-      // const { user } = await apiClient.getUserProfile(userId); // <-- INCORRECTO
-      const { user } = await apiClient.validateToken(token); // <-- ¡CORRECTO!
-      
+      // Usar la función 'validateToken' que SÍ existe
+      const { user } = await apiClient.validateToken(token);
       // <--- FIN DEL ARREGLO --- >
       
       if (user) {
         console.log('Usuario válido encontrado:', user.role);
-        // Guardamos el ID de usuario aquí para asegurar que exista
+        // Asegurarse de que el ID esté guardado por si acaso
         AuthManager.saveUserId(user.id);
         setUser(user);
         setView(user.role === 'admin' ? 'admin-users' : 'dashboard');
@@ -280,10 +276,7 @@ export default function App() {
           />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{memoizedUser.name || memoizedUser.email}</p>
-            
-            {/* --- ¡TAMBIÉN CORREGÍ EL ERROR DE TIPEO DE LA ÚLTIMA VEZ! --- */}
             <p className="text-xs text-muted-foreground capitalize">{t(role)}</p>
-
           </div>
         </div>
         <Button variant="outline" className="w-full" onClick={handleLogout}>
