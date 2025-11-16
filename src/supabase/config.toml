@@ -24,10 +24,7 @@ additional_redirect_urls = ["https://localhost:3000"]
 jwt_expiry = 3600
 enable_signup = true
 
-[functions]
-enabled = true
-port = 54324
-# IMPORTANTE: Deshabilitar verificación JWT para permitir endpoints públicos
+[functions.final_server]
 verify_jwt = false
 
 # Note: The actual edge function is located at:
