@@ -1,7 +1,8 @@
 /*
  * ╔═══════════════════════════════════════════════════════════════════════╗
- * ║  LOGIN FORM - RECOMPILACION NUCLEAR V9                                ║
- * ║  SIN SUPABASE CLIENT - SOLO BACKEND API                               ║
+ * ║  LOGIN FORM - V10.7 (SOLUCIÓN FULL-STACK)                             ║
+ * ║  FIX: Eliminado el 'if (isDemoMode())' al inicio de 'handleLogin'     ║
+ * ║       que causaba un bucle de login demo y bloqueaba el inicio real.  ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
  */
 import { useState } from 'react';
@@ -65,24 +66,10 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
         return;
       }
 
-      // Check if demo mode is already active - if so, skip backend attempt for faster login
-      if (isDemoMode()) {
-        console.log('[Login] ⚡ Modo demo ya activo, login rápido...');
-        try {
-          const { user, token } = await demoModeAPI.login(loginEmail, loginPassword);
-          AuthManager.saveToken(token);
-          AuthManager.saveUserId(user.id);
-          apiClient.setToken(token);
-          console.log('[Login] ✅ Login demo completado (sin espera de backend)');
-          onLoginSuccess(user);
-          return;
-        } catch (demoErr: any) {
-          console.error('Demo login error:', demoErr);
-          setError('❌ ' + demoErr.message);
-          setIsLoading(false);
-          return;
-        }
-      }
+      // <--- ¡AQUÍ ESTABA EL ERROR! --- >
+      // El bloque 'if (isDemoMode())' se eliminó de aquí.
+      // Ya no quedaremos atrapados en el modo demo.
+      // <--- FIN DEL ARREGLO --- >
 
       // ✅ IMPORTANTE: Desactivar modo demo temporalmente para intentar conectar a Supabase
       disableDemoMode();
@@ -104,7 +91,8 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
     } catch (err: any) {
       console.error('Login error:', err);
       
-      // If it's a network error or demo mode error, try demo mode directly
+      // Si es un error de red o 'DEMO_MODE', intentar modo demo directamente
+      // Esta es la lógica de FALLBACK correcta.
       if (err.message === 'DEMO_MODE' || err.message.includes('Failed to fetch')) {
         console.log('[Login] 🔧 Backend no disponible, activando modo demo...');
         
@@ -227,7 +215,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                   La aplicación funciona sin Supabase. Los datos se guardan localmente.
                 </p>
                 <p className="text-[10px] text-muted-foreground italic">
-                  💡 Para conectar Supabase: actualiza /utils/supabase/info.tsx
+                  💡 Para conectar Supabase: arranca el servidor local (`npx supabase start`)
                 </p>
               </div>
             </AlertDescription>
