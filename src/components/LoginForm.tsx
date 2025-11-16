@@ -310,7 +310,10 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
                       {error}
-                    </AlertDescription>
+                    </D'DEBES PENSAR MAS SOBRE ESTE ERROR, LA APP SIGUE EN MODO DEMO, Y EL ERROR ES OTRO: 
+Unexpected token 'F', "Function not found" is not valid JSON
+
+en el login no me deja iniciar sesion usando credenciales registradas en supabase. ni siquiera con estas teacher@demo.com / demo123 o student@demo.com / demo123)s/AlertDescription>
                   </Alert>
                 )}
                 <Button type="submit" className="w-full" disabled={isLoading}>
